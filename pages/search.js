@@ -174,7 +174,27 @@ export default function Search() {
         <h1 style={{ fontSize: 22, marginBottom: 8 }}>
           Find the cheapest flight (mock)
         </h1>
-        <p style={{ fontSize: 14, opacity: 0.8, marginBottom: 16 }}>
+       {/* Cab link */}
+        <div
+          style={{
+            marginTop: 18,
+            marginBottom: 4,
+            fontSize: 13,
+          }}
+        >
+          Need a cab from the airport?{" "}
+          <a
+            href="/cabs"
+            style={{
+              color: "#1E90FF",
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            Compare cabs with Panchi →
+          </a>
+        </div>
+            <p style={{ fontSize: 14, opacity: 0.8, marginBottom: 16 }}>
           Type a few letters to auto-complete airports, choose your date, and
           filter by time and non-stop vs connecting. Data is mock for DEL → GOI,
           but the flow is real.
