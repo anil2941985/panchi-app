@@ -4,7 +4,6 @@ export default function Home() {
   const [storedName, setStoredName] = useState("");
   const [nameInput, setNameInput] = useState("");
   const [destinationText, setDestinationText] = useState("");
-  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -15,51 +14,40 @@ export default function Home() {
     }
   }, []);
 
-  const greeting = storedName ? `Hey, ${storedName}` : "Hey,";
-
   function handleSaveName(e) {
     e.preventDefault();
     const trimmed = nameInput.trim();
     if (!trimmed) return;
-    setSavingName(true);
-    try {
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("panchiName", trimmed);
-      }
-      setStoredName(trimmed);
-    } finally {
-      setSavingName(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("panchiName", trimmed);
     }
-  }
-
-  function goToSearchWithCodes(originCode, destinationCode) {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams({
-      origin: originCode,
-      destination: destinationCode,
-    }).toString();
-    window.location.href = `/search?${params}`;
+    setStoredName(trimmed);
   }
 
   function handleFreeTextSearch(e) {
     e.preventDefault();
     const text = destinationText.toLowerCase();
-    let originCode = "DEL";
-    let destCode = "GOI";
 
-    if (text.includes("goa")) destCode = "GOI";
-    else if (text.includes("manali")) destCode = "KUU";
-    else if (text.includes("jaipur")) destCode = "JAI";
-    else destCode = "GOI";
+    let origin = "DEL";
+    let dest = "GOI";
+
+    if (text.includes("manali")) dest = "KUU";
+    else if (text.includes("jaipur")) dest = "JAI";
 
     const params = new URLSearchParams({
-      origin: originCode,
-      destination: destCode,
+      origin,
+      destination: dest,
     }).toString();
-    if (typeof window !== "undefined") {
-      window.location.href = `/search?${params}`;
-    }
+
+    window.location.href = `/search?${params}`;
   }
+
+  function goToSearch(origin, dest) {
+    const params = new URLSearchParams({ origin, destination: dest }).toString();
+    window.location.href = `/search?${params}`;
+  }
+
+  const greeting = storedName ? `Hey, ${storedName}` : "Hey,";
 
   return (
     <main
@@ -81,27 +69,26 @@ export default function Home() {
           boxShadow: "0 18px 45px rgba(0,0,0,0.18)",
         }}
       >
-        {/* Top bar */}
-        
-        {/* Greeting + where to
+        {/* HEADER */}
         <header
-  style={{
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "16px",
-  }}
->
-  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-    <img
-      src="/panchi-logo.png"
-      alt="Panchi Logo"
-      style={{ height: "58px", width: "auto" }}   // bigger logo
-    />
-  </div>
-  <div style={{ fontSize: "14px", opacity: 0.7 }}>Cheapest flights · MVP</div>
-</header>
-*/}
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "20px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <img
+              src="/panchi-logo.png"
+              alt="Panchi Logo"
+              style={{ height: "70px", width: "auto" }} // BIGGER LOGO
+            />
+          </div>
+          <div style={{ fontSize: "14px", opacity: 0.7 }}>Cheapest flights · MVP</div>
+        </header>
+
+        {/* HERO CARD */}
         <section
           style={{
             borderRadius: "20px",
@@ -109,13 +96,13 @@ export default function Home() {
             background:
               "linear-gradient(135deg, #1E90FF 0%, #FF6F61 50%, #FFB347 100%)",
             color: "#fff",
-            marginBottom: "20px",
+            marginBottom: "24px",
           }}
         >
           <div style={{ fontSize: "18px", marginBottom: "4px" }}>
             {greeting}
           </div>
-          <h1 style={{ fontSize: "22px", marginBottom: "6px" }}>
+          <h1 style={{ fontSize: "26px", marginBottom: "6px" }}>
             Where are we going next?
           </h1>
           <p style={{ fontSize: "14px", opacity: 0.9 }}>
@@ -125,38 +112,34 @@ export default function Home() {
           </p>
         </section>
 
-        {/* Name capture */}
+        {/* NAME INPUT (only if name not saved) */}
         {!storedName && (
           <form
             onSubmit={handleSaveName}
             style={{
-              marginBottom: "18px",
+              marginBottom: "20px",
               display: "flex",
               flexWrap: "wrap",
               gap: "10px",
               alignItems: "center",
             }}
           >
-            <label style={{ fontSize: "13px" }}>
-              What should I call you?
-              <input
-                value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
-                placeholder="Type your name"
-                style={{
-                  marginLeft: "8px",
-                  padding: "8px 10px",
-                  borderRadius: "14px",
-                  border: "1px solid rgba(0,0,0,0.14)",
-                  fontSize: "13px",
-                }}
-              />
-            </label>
+            <input
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              placeholder="Your name"
+              style={{
+                padding: "10px 12px",
+                borderRadius: "14px",
+                border: "1px solid rgba(0,0,0,0.14)",
+                fontSize: "14px",
+                flex: "1",
+              }}
+            />
             <button
               type="submit"
-              disabled={savingName}
               style={{
-                padding: "8px 14px",
+                padding: "10px 14px",
                 borderRadius: "18px",
                 border: "none",
                 background:
@@ -171,7 +154,7 @@ export default function Home() {
           </form>
         )}
 
-        {/* Free-text box */}
+        {/* FREE TEXT SEARCH */}
         <section style={{ marginBottom: "20px" }}>
           <h2 style={{ fontSize: "18px", marginBottom: "8px" }}>
             Tell me a place or a vibe
@@ -195,16 +178,17 @@ export default function Home() {
               placeholder="Where to? (city, hill station, beach...)"
               style={{
                 flex: "1 1 240px",
-                padding: "10px 12px",
+                padding: "12px 12px",
                 borderRadius: "16px",
                 border: "1px solid rgba(30,144,255,0.4)",
                 fontSize: "14px",
               }}
             />
+
             <button
               type="submit"
               style={{
-                padding: "10px 18px",
+                padding: "12px 18px",
                 borderRadius: "20px",
                 border: "none",
                 background:
@@ -212,7 +196,7 @@ export default function Home() {
                 color: "#fff",
                 fontWeight: 600,
                 cursor: "pointer",
-                boxShadow: "0 10px 22px rgba(0,0,0,0.18)",
+                whiteSpace: "nowrap",
               }}
             >
               Let Panchi plan →
@@ -220,7 +204,7 @@ export default function Home() {
           </form>
         </section>
 
-        {/* Quick suggestion chips */}
+        {/* QUICK SUGGESTIONS */}
         <section>
           <h3 style={{ fontSize: "16px", marginBottom: "8px" }}>
             Or pick a quick idea
@@ -230,28 +214,20 @@ export default function Home() {
               display: "flex",
               flexWrap: "wrap",
               gap: "10px",
-              marginBottom: "6px",
+              marginBottom: "10px",
             }}
           >
-            <button
-              onClick={() => goToSearchWithCodes("DEL", "GOI")}
-              style={chipStyle}
-            >
+            <button style={chip} onClick={() => goToSearch("DEL", "GOI")}>
               Goa for the weekend 🏖️
             </button>
-            <button
-              onClick={() => goToSearchWithCodes("DEL", "KUU")}
-              style={chipStyle}
-            >
+            <button style={chip} onClick={() => goToSearch("DEL", "KUU")}>
               Manali escape ❄️
             </button>
-            <button
-              onClick={() => goToSearchWithCodes("DEL", "JAI")}
-              style={chipStyle}
-            >
+            <button style={chip} onClick={() => goToSearch("DEL", "JAI")}>
               Jaipur & forts 🏰
             </button>
           </div>
+
           <p style={{ fontSize: "13px", opacity: 0.75 }}>
             For now we start from Delhi and focus on flights. In the next phase
             we plug in trains, buses and cabs so you see all modes in one view.
@@ -262,7 +238,7 @@ export default function Home() {
   );
 }
 
-const chipStyle = {
+const chip = {
   padding: "8px 14px",
   borderRadius: "20px",
   border: "none",
