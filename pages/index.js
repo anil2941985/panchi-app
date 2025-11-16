@@ -83,23 +83,33 @@ export default function Home() {
       >
         {/* Top bar */}
         <header
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "16px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <img
-              src="/panchi-logo.png"
-              alt="Panchi Logo"
-              style={{ height: "38px", width: "auto" }}
-            />
-          </div>
-          <div style={{ fontSize: "14px", opacity: 0.7 }}>India · MVP</div>
-        </header>
-
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
+  }}
+>
+  <a
+    href="/"
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+      textDecoration: "none",
+    }}
+  >
+    <span style={{ fontSize: "18px", color: "#1E90FF" }}>◀︎</span>
+    <img
+      src="/panchi-logo.png"
+      alt="Panchi Logo"
+      style={{ height: "30px", width: "auto" }}
+    />
+  </a>
+  <div style={{ fontSize: 14, opacity: 0.7 }}>
+    Cheapest flights · MVP
+  </div>
+</header>
         {/* Greeting + where to */}
         <section
           style={{
