@@ -7,7 +7,7 @@ const AIRPORTS = [
   { code: "HYD", city: "Hyderabad" },
   { code: "MAA", city: "Chennai" },
 ];
-
+const [userName, setUserName] = useState("");
 export default function Search() {
   const [origin, setOrigin] = useState("DEL");
   const [destination, setDestination] = useState("GOI");
@@ -24,7 +24,30 @@ export default function Search() {
   const [loading, setLoading] = useState(false);
   const [flights, setFlights] = useState([]);
   const [error, setError] = useState("");
+useEffect(() => {
+    if (typeof window === "undefined") return;
 
+    // Load stored name
+    const saved = window.localStorage.getItem("panchiName");
+    if (saved) setUserName(saved);
+
+    // Read origin / destination from URL (from home page chips)
+    const params = new URLSearchParams(window.location.search);
+    const o = params.get("origin");
+    const d = params.get("destination");
+
+    if (o) {
+      setOrigin(o);
+      const ap = AIRPORTS.find((a) => a.code === o);
+      setOriginQuery(ap ? `${ap.city} (${ap.code})` : o);
+    }
+
+    if (d) {
+      setDestination(d);
+      const ap = AIRPORTS.find((a) => a.code === d);
+      setDestinationQuery(ap ? `${ap.city} (${ap.code})` : d);
+    }
+  }, []);
   function filterAirports(query) {
     if (!query) return AIRPORTS;
     const q = query.toLowerCase();
@@ -120,8 +143,8 @@ export default function Search() {
             ◀︎ Panchi
           </a>
           <div style={{ fontSize: 14, opacity: 0.7 }}>
-            Cheapest flights · MVP
-          </div>
+  {userName ? `Cheapest options for you, ${userName}` : "Cheapest flights · MVP"}
+</div>
         </header>
 
         <h1 style={{ fontSize: 22, marginBottom: 8 }}>
