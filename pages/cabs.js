@@ -47,56 +47,52 @@ export default function Cabs() {
           boxShadow: "0 18px 45px rgba(0,0,0,0.18)",
         }}
       >
-        {/* Header with logo + back */}
-        
+        {/* HEADER: back arrow + bigger logo + label */}
+        <header
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 24,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+            }}
+          >
+            <a
+              href="/"
+              style={{
+                textDecoration: "none",
+                fontSize: "20px",
+                color: "#1E90FF",
+                fontWeight: 600,
+                lineHeight: 1,
+              }}
+            >
+              ◀︎
+            </a>
+            <img
+              src="/panchi-logo.png"
+              alt="Panchi Logo"
+              style={{ height: "46px", width: "auto" }}
+            />
+          </div>
+
+          <div style={{ fontSize: 14, opacity: 0.7 }}>Cab options · MVP</div>
+        </header>
+
         <h1 style={{ fontSize: 22, marginBottom: 8 }}>
           Find the cheapest cab from the airport
         </h1>
         <p style={{ fontSize: 14, opacity: 0.8, marginBottom: 16 }}>
           This MVP compares a few typical options (Local Taxi, Ola, Uber). In
           the full version, Panchi will plug into live cab APIs and show you
-          surge alerts, traffic delays and best drop-off timings.
-<header
-  style={{
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 24,
-  }}
->
-  {/* Back Button */}
-  <a
-    href="/"
-    style={{
-      textDecoration: "none",
-      fontSize: "18px",
-      color: "#1E90FF",
-      fontWeight: 600,
-    }}
-  >
-    ◀︎
-  </a>
-
-  {/* Center Logo */}
-  <img
-    src="/panchi-logo.png"
-    alt="Panchi Logo"
-    style={{
-      height: "46px",
-      width: "auto",
-      display: "block",
-      margin: "0 auto",
-      flexGrow: 1,
-      objectFit: "contain",
-    }}
-  />
-
-  {/* Right Label */}
-  <div style={{ width: 110, textAlign: "right", fontSize: 14, opacity: 0.7 }}>
-    Cab options · MVP
-  </div>
-</header>
-      </p>
+          surge alerts, traffic delays and the best drop-off timings.
+        </p>
 
         <div style={{ marginBottom: 16 }}>
           <button
@@ -115,7 +111,7 @@ export default function Cabs() {
               opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading ? "Refreshing cabs..." : "Refresh cab options"}
+            {loading ? "Refreshing cab options..." : "Refresh cab options"}
           </button>
         </div>
 
