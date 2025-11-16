@@ -1,5 +1,4 @@
-import { useState } from "react";
-
+import { useState, useEffect } from "react";
 const AIRPORTS = [
   { code: "DEL", city: "Delhi" },
   { code: "GOI", city: "Goa" },
