@@ -175,3 +175,275 @@ export default function Search() {
                   top: "100%",
                   left: 0,
                   right: 0,
+                  background: "#fff",
+                  borderRadius: 12,
+                  border: "1px solid rgba(0,0,0,0.08)",
+                  marginTop: 4,
+                  maxHeight: 180,
+                  overflowY: "auto",
+                  boxShadow: "0 10px 20px rgba(0,0,0,0.12)",
+                  zIndex: 10,
+                }}
+              >
+                {filterAirports(originQuery)
+                  .slice(0, 6)
+                  .map((a) => (
+                    <div
+                      key={a.code}
+                      onMouseDown={() => handleSelectAirport("origin", a)}
+                      style={{
+                        padding: "8px 10px",
+                        fontSize: 13,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {a.city} ({a.code})
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+
+          {/* Destination */}
+          <div style={{ flex: "1 1 160px", position: "relative" }}>
+            <label style={{ fontSize: 12, opacity: 0.7 }}>To</label>
+            <input
+              value={destinationQuery}
+              onChange={(e) => {
+                setDestinationQuery(e.target.value);
+                setShowDestinationSuggestions(true);
+              }}
+              onFocus={() => setShowDestinationSuggestions(true)}
+              onBlur={() => {
+                setTimeout(() => setShowDestinationSuggestions(false), 150);
+              }}
+              placeholder="Type city or code"
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 14,
+                border: "1px solid rgba(50,205,50,0.4)",
+                fontWeight: 600,
+              }}
+            />
+            {showDestinationSuggestions && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  background: "#fff",
+                  borderRadius: 12,
+                  border: "1px solid rgba(0,0,0,0.08)",
+                  marginTop: 4,
+                  maxHeight: 180,
+                  overflowY: "auto",
+                  boxShadow: "0 10px 20px rgba(0,0,0,0.12)",
+                  zIndex: 10,
+                }}
+              >
+                {filterAirports(destinationQuery)
+                  .slice(0, 6)
+                  .map((a) => (
+                    <div
+                      key={a.code}
+                      onMouseDown={() => handleSelectAirport("dest", a)}
+                      style={{
+                        padding: "8px 10px",
+                        fontSize: 13,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {a.city} ({a.code})
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+
+          {/* Date */}
+          <div style={{ flex: "0 0 160px" }}>
+            <label style={{ fontSize: 12, opacity: 0.7 }}>Date</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 14,
+                border: "1px solid rgba(255,111,97,0.4)",
+                fontWeight: 500,
+              }}
+            />
+          </div>
+
+          {/* Button */}
+          <div style={{ flex: "0 0 170px", display: "flex" }}>
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                borderRadius: 20,
+                border: "none",
+                cursor: "pointer",
+                background:
+                  "linear-gradient(135deg,#1E90FF 0%,#FF6F61 50%,#FFB347 100%)",
+                color: "#fff",
+                fontWeight: 600,
+                boxShadow: "0 10px 22px rgba(0,0,0,0.18)",
+                opacity: loading ? 0.7 : 1,
+              }}
+            >
+              {loading ? "Searching..." : "Search flights"}
+            </button>
+          </div>
+        </form>
+
+        {/* Filters */}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 12,
+            fontSize: 13,
+            marginBottom: 16,
+          }}
+        >
+          <div>
+            <div style={{ opacity: 0.7, marginBottom: 4 }}>Preferred time</div>
+            <select
+              value={timePreference}
+              onChange={(e) => setTimePreference(e.target.value)}
+              style={{
+                padding: "8px 10px",
+                borderRadius: 14,
+                border: "1px solid rgba(0,0,0,0.12)",
+              }}
+            >
+              <option value="any">Any</option>
+              <option value="morning">Morning</option>
+              <option value="afternoon">Afternoon</option>
+              <option value="evening">Evening</option>
+              <option value="night">Night</option>
+            </select>
+          </div>
+
+          <div>
+            <div style={{ opacity: 0.7, marginBottom: 4 }}>Stops</div>
+            <select
+              value={stopFilter}
+              onChange={(e) => setStopFilter(e.target.value)}
+              style={{
+                padding: "8px 10px",
+                borderRadius: 14,
+                border: "1px solid rgba(0,0,0,0.12)",
+              }}
+            >
+              <option value="any">Any</option>
+              <option value="nonstop">Non-stop only</option>
+              <option value="withstops">With stops only</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Errors */}
+        {error && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: 10,
+              borderRadius: 12,
+              background: "#FFF4F4",
+              color: "#B00020",
+              fontSize: 13,
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        {/* Results */}
+        {filteredFlights.length > 0 && (
+          <>
+            <h2 style={{ fontSize: 18, marginBottom: 8 }}>Results</h2>
+            <p style={{ fontSize: 13, opacity: 0.7, marginBottom: 10 }}>
+              Sorted by price (lowest first). Filters applied above.
+            </p>
+
+            {cheapest && (
+              <div
+                style={{
+                  marginBottom: 16,
+                  padding: 14,
+                  borderRadius: 18,
+                  background:
+                    "linear-gradient(135deg,#32CD32 0%,#FFB347 100%)",
+                  color: "#fff",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    textTransform: "uppercase",
+                    opacity: 0.8,
+                  }}
+                >
+                  Cheapest today 🔥
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>
+                  {cheapest.provider} · {cheapest.flight_no}
+                </div>
+                <div style={{ fontSize: 14 }}>
+                  {cheapest.depart} → {cheapest.arrive} · {cheapest.duration}
+                </div>
+                <div style={{ fontSize: 13, marginTop: 2 }}>
+                  {cheapest.stops === 0 ? "Non-stop" : `${cheapest.stops} stop`}
+                </div>
+                <div style={{ fontSize: 18, marginTop: 4 }}>
+                  ₹{cheapest.price}
+                </div>
+              </div>
+            )}
+
+            {filteredFlights.slice(1).map((f, idx) => (
+              <div
+                key={idx}
+                style={{
+                  marginBottom: 10,
+                  padding: 12,
+                  borderRadius: 14,
+                  background: "#F7FAFF",
+                  border: "1px solid rgba(30,144,255,0.16)",
+                }}
+              >
+                <div style={{ fontWeight: 600 }}>
+                  {f.provider} · {f.flight_no}
+                </div>
+                <div style={{ fontSize: 13, opacity: 0.8 }}>
+                  {f.depart} → {f.arrive} · {f.duration}
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>
+                  {f.stops === 0 ? "Non-stop" : `${f.stops} stop`}
+                </div>
+                <div style={{ marginTop: 4, fontWeight: 600 }}>
+                  ₹{f.price}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {filteredFlights.length === 0 && !loading && !error && (
+          <p style={{ fontSize: 13, opacity: 0.75, marginTop: 12 }}>
+            Type a few letters to select airports, choose date, and hit “Search
+            flights” to load sample data for DEL → GOI.
+          </p>
+        )}
+      </div>
+    </main>
+  );
+}
