@@ -92,10 +92,16 @@ export default function Home() {
             marginBottom: "16px",
           }}
         >
-          <div style={{ fontWeight: 700, fontSize: "24px", color: "#1E90FF" }}>
-            Panchi
-          </div>
-          <div style={{ fontSize: "14px", opacity: 0.7 }}>India · MVP</div>
+          <img
+  src="/panchi-logo.png"
+  alt="Panchi Logo"
+  style={{
+    height: "42px",
+    width: "auto",
+    borderRadius: "8px",
+  }}
+/>
+  <div style={{ fontSize: "14px", opacity: 0.7 }}>India · MVP</div>
         </header>
 
         {/* Greeting + “where to” */}
