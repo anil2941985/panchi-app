@@ -3,6 +3,7 @@ import { useState } from "react";
 export default function Search() {
   const [origin, setOrigin] = useState("DEL");
   const [destination, setDestination] = useState("GOI");
+  const [date, setDate] = useState(""); // NEW: travel date
   const [loading, setLoading] = useState(false);
   const [flights, setFlights] = useState([]);
   const [error, setError] = useState("");
@@ -17,6 +18,7 @@ export default function Search() {
       const params = new URLSearchParams({
         origin,
         destination,
+        date, // will be used later when we plug real API
       }).toString();
 
       const res = await fetch(`/api/mockFlights?${params}`);
@@ -71,8 +73,8 @@ export default function Search() {
           Find the cheapest flight (mock)
         </h1>
         <p style={{ fontSize: 14, opacity: 0.8, marginBottom: 16 }}>
-          For now, this uses mock data for DEL → GOI, but logic is real. Later we
-          will plug live APIs.
+          This MVP uses mock data for DEL → GOI but the search logic is real.
+          Date is captured now so we can later plug in live APIs.
         </p>
 
         <form
@@ -109,6 +111,21 @@ export default function Search() {
                 borderRadius: 14,
                 border: "1px solid rgba(50,205,50,0.4)",
                 fontWeight: 600,
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, opacity: 0.7 }}>Date</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 14,
+                border: "1px solid rgba(255,111,97,0.4)",
+                fontWeight: 500,
               }}
             />
           </div>
@@ -222,10 +239,10 @@ export default function Search() {
 
         {flights.length === 0 && !loading && !error && (
           <p style={{ fontSize: 13, opacity: 0.75, marginTop: 12 }}>
-            Hit “Search flights” to load sample data for DEL → GOI.
+            Choose date and hit “Search flights” to load sample data for DEL → GOI.
           </p>
         )}
       </div>
     </main>
   );
-              }
+}
