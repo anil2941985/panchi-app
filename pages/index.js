@@ -82,35 +82,26 @@ export default function Home() {
         }}
       >
         {/* Top bar */}
+        
+        {/* Greeting + where to
         <header
   style={{
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: "16px",
   }}
 >
-  <a
-    href="/"
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "6px",
-      textDecoration: "none",
-    }}
-  >
-    <span style={{ fontSize: "18px", color: "#1E90FF" }}>◀︎</span>
+  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
     <img
       src="/panchi-logo.png"
       alt="Panchi Logo"
-      style={{ height: "30px", width: "auto" }}
+      style={{ height: "58px", width: "auto" }}   // bigger logo
     />
-  </a>
-  <div style={{ fontSize: 14, opacity: 0.7 }}>
-    Cheapest flights · MVP
   </div>
+  <div style={{ fontSize: "14px", opacity: 0.7 }}>Cheapest flights · MVP</div>
 </header>
-        {/* Greeting + where to */}
+*/}
         <section
           style={{
             borderRadius: "20px",
