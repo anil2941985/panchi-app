@@ -139,9 +139,26 @@ useEffect(() => {
             marginBottom: 24,
           }}
         >
-          <a href="/" style={{ textDecoration: "none", color: "#1E90FF" }}>
-            ◀︎ Panchi
-          </a>
+         <a
+  href="/"
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    textDecoration: "none",
+  }}
+>
+  <span style={{ fontSize: "18px", color: "#1E90FF" }}>◀︎</span>
+  <img
+    src="/panchi-logo.png"
+    alt="Panchi Logo"
+    style={{
+      height: "34px",
+      width: "auto",
+      borderRadius: "6px",
+    }}
+  />
+</a>
           <div style={{ fontSize: 14, opacity: 0.7 }}>
   {userName ? `Cheapest options for you, ${userName}` : "Cheapest flights · MVP"}
 </div>
