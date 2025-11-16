@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+
 const AIRPORTS = [
   { code: "DEL", city: "Delhi" },
   { code: "GOI", city: "Goa" },
@@ -7,31 +8,37 @@ const AIRPORTS = [
   { code: "HYD", city: "Hyderabad" },
   { code: "MAA", city: "Chennai" },
 ];
-const [userName, setUserName] = useState("");
+
 export default function Search() {
+  // base state
   const [origin, setOrigin] = useState("DEL");
   const [destination, setDestination] = useState("GOI");
+  const [date, setDate] = useState("");
+
+  // autocomplete queries
   const [originQuery, setOriginQuery] = useState("Delhi (DEL)");
   const [destinationQuery, setDestinationQuery] = useState("Goa (GOI)");
   const [showOriginSuggestions, setShowOriginSuggestions] = useState(false);
   const [showDestinationSuggestions, setShowDestinationSuggestions] =
     useState(false);
 
-  const [date, setDate] = useState("");
+  // filters
   const [timePreference, setTimePreference] = useState("any"); // any / morning / afternoon / evening / night
   const [stopFilter, setStopFilter] = useState("any"); // any / nonstop / withstops
 
+  // data + status
   const [loading, setLoading] = useState(false);
   const [flights, setFlights] = useState([]);
   const [error, setError] = useState("");
-useEffect(() => {
+  const [userName, setUserName] = useState("");
+
+  // load name + URL params on first render (client side)
+  useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Load stored name
     const saved = window.localStorage.getItem("panchiName");
     if (saved) setUserName(saved);
 
-    // Read origin / destination from URL (from home page chips)
     const params = new URLSearchParams(window.location.search);
     const o = params.get("origin");
     const d = params.get("destination");
@@ -48,6 +55,7 @@ useEffect(() => {
       setDestinationQuery(ap ? `${ap.city} (${ap.code})` : d);
     }
   }, []);
+
   function filterAirports(query) {
     if (!query) return AIRPORTS;
     const q = query.toLowerCase();
@@ -96,7 +104,7 @@ useEffect(() => {
     }
   }
 
-  // Apply filters: time preference + stops
+  // Apply filters
   const filteredFlights = flights
     .filter((f) =>
       timePreference === "any" ? true : f.timeBand === timePreference
@@ -131,6 +139,7 @@ useEffect(() => {
           boxShadow: "0 18px 45px rgba(0,0,0,0.18)",
         }}
       >
+        {/* Header with logo */}
         <header
           style={{
             display: "flex",
@@ -139,29 +148,27 @@ useEffect(() => {
             marginBottom: 24,
           }}
         >
-         <a
-  href="/"
-  style={{
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-    textDecoration: "none",
-  }}
->
-  <span style={{ fontSize: "18px", color: "#1E90FF" }}>◀︎</span>
-  <img
-    src="/panchi-logo.png"
-    alt="Panchi Logo"
-    style={{
-      height: "34px",
-      width: "auto",
-      borderRadius: "6px",
-    }}
-  />
-</a>
+          <a
+            href="/"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              textDecoration: "none",
+            }}
+          >
+            <span style={{ fontSize: "18px", color: "#1E90FF" }}>◀︎</span>
+            <img
+              src="/panchi-logo.png"
+              alt="Panchi Logo"
+              style={{ height: "30px", width: "auto" }}
+            />
+          </a>
           <div style={{ fontSize: 14, opacity: 0.7 }}>
-  {userName ? `Cheapest options for you, ${userName}` : "Cheapest flights · MVP"}
-</div>
+            {userName
+              ? `Cheapest options for you, ${userName}`
+              : "Cheapest flights · MVP"}
+          </div>
         </header>
 
         <h1 style={{ fontSize: 22, marginBottom: 8 }}>
@@ -179,13 +186,19 @@ useEffect(() => {
           style={{
             display: "flex",
             flexWrap: "wrap",
-            gap: "12px",
+            gap: "16px",
             marginBottom: "16px",
             alignItems: "flex-end",
           }}
         >
           {/* Origin */}
-          <div style={{ flex: "1 1 160px", position: "relative" }}>
+          <div
+            style={{
+              flex: "1 1 200px",
+              position: "relative",
+              minWidth: 0,
+            }}
+          >
             <label style={{ fontSize: 12, opacity: 0.7 }}>From</label>
             <input
               value={originQuery}
@@ -195,7 +208,6 @@ useEffect(() => {
               }}
               onFocus={() => setShowOriginSuggestions(true)}
               onBlur={() => {
-                // small delay so click can register
                 setTimeout(() => setShowOriginSuggestions(false), 150);
               }}
               placeholder="Type city or code"
@@ -244,7 +256,13 @@ useEffect(() => {
           </div>
 
           {/* Destination */}
-          <div style={{ flex: "1 1 160px", position: "relative" }}>
+          <div
+            style={{
+              flex: "1 1 200px",
+              position: "relative",
+              minWidth: 0,
+            }}
+          >
             <label style={{ fontSize: 12, opacity: 0.7 }}>To</label>
             <input
               value={destinationQuery}
@@ -302,7 +320,12 @@ useEffect(() => {
           </div>
 
           {/* Date */}
-          <div style={{ flex: "0 0 160px" }}>
+          <div
+            style={{
+              flex: "0 0 180px",
+              minWidth: "160px",
+            }}
+          >
             <label style={{ fontSize: 12, opacity: 0.7 }}>Date</label>
             <input
               type="date"
@@ -319,7 +342,13 @@ useEffect(() => {
           </div>
 
           {/* Button */}
-          <div style={{ flex: "0 0 170px", display: "flex" }}>
+          <div
+            style={{
+              flex: "0 0 190px",
+              minWidth: "170px",
+              display: "flex",
+            }}
+          >
             <button
               type="submit"
               disabled={loading}
@@ -389,7 +418,7 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Errors */}
+        {/* Error */}
         {error && (
           <div
             style={{
@@ -440,7 +469,9 @@ useEffect(() => {
                   {cheapest.depart} → {cheapest.arrive} · {cheapest.duration}
                 </div>
                 <div style={{ fontSize: 13, marginTop: 2 }}>
-                  {cheapest.stops === 0 ? "Non-stop" : `${cheapest.stops} stop`}
+                  {cheapest.stops === 0
+                    ? "Non-stop"
+                    : `${cheapest.stops} stop`}
                 </div>
                 <div style={{ fontSize: 18, marginTop: 4 }}>
                   ₹{cheapest.price}
