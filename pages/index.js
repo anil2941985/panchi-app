@@ -6,7 +6,6 @@ export default function Home() {
   const [destinationText, setDestinationText] = useState("");
   const [savingName, setSavingName] = useState(false);
 
-  // Load saved name once on client
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved = window.localStorage.getItem("panchiName");
@@ -44,15 +43,14 @@ export default function Home() {
 
   function handleFreeTextSearch(e) {
     e.preventDefault();
-    // Very simple mapping for MVP
     const text = destinationText.toLowerCase();
     let originCode = "DEL";
     let destCode = "GOI";
 
     if (text.includes("goa")) destCode = "GOI";
-    else if (text.includes("manali")) destCode = "KUU"; // Kullu/Manali
+    else if (text.includes("manali")) destCode = "KUU";
     else if (text.includes("jaipur")) destCode = "JAI";
-    else destCode = "GOI"; // default for demo
+    else destCode = "GOI";
 
     const params = new URLSearchParams({
       origin: originCode,
@@ -92,19 +90,17 @@ export default function Home() {
             marginBottom: "16px",
           }}
         >
-          <img
-  src="/panchi-logo.png"
-  alt="Panchi Logo"
-  style={{
-    height: "42px",
-    width: "auto",
-    borderRadius: "8px",
-  }}
-/>
-  <div style={{ fontSize: "14px", opacity: 0.7 }}>India · MVP</div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <img
+              src="/panchi-logo.png"
+              alt="Panchi Logo"
+              style={{ height: "38px", width: "auto" }}
+            />
+          </div>
+          <div style={{ fontSize: "14px", opacity: 0.7 }}>India · MVP</div>
         </header>
 
-        {/* Greeting + “where to” */}
+        {/* Greeting + where to */}
         <section
           style={{
             borderRadius: "20px",
@@ -123,12 +119,12 @@ export default function Home() {
           </h1>
           <p style={{ fontSize: "14px", opacity: 0.9 }}>
             Panchi will find the smartest and cheapest ways to reach your
-            destination — flights, trains, buses and cabs — starting with
-            flights in this MVP.
+            destination — starting with flights in this MVP, and later adding
+            trains, buses and cabs.
           </p>
         </section>
 
-        {/* Name capture (only really needed once) */}
+        {/* Name capture */}
         {!storedName && (
           <form
             onSubmit={handleSaveName}
@@ -174,14 +170,13 @@ export default function Home() {
           </form>
         )}
 
-        {/* Free-text “Where to?” box */}
+        {/* Free-text box */}
         <section style={{ marginBottom: "20px" }}>
           <h2 style={{ fontSize: "18px", marginBottom: "8px" }}>
             Tell me a place or a vibe
           </h2>
           <p style={{ fontSize: "14px", opacity: 0.8, marginBottom: "8px" }}>
-            You can type things like “Goa”, “Manali”, “Jaipur”, or even “beach
-            under 5k”.
+            Try “Goa”, “Manali”, “Jaipur” or “beach under 5k”.
           </p>
 
           <form
@@ -224,7 +219,7 @@ export default function Home() {
           </form>
         </section>
 
-        {/* Quick AI-style suggestions */}
+        {/* Quick suggestion chips */}
         <section>
           <h3 style={{ fontSize: "16px", marginBottom: "8px" }}>
             Or pick a quick idea
@@ -257,9 +252,8 @@ export default function Home() {
             </button>
           </div>
           <p style={{ fontSize: "13px", opacity: 0.75 }}>
-            For now the engine starts from Delhi and focuses on flights. In the
-            next phase, we plug in trains, buses and cabs so you see **all
-            modes in one place**.
+            For now we start from Delhi and focus on flights. In the next phase
+            we plug in trains, buses and cabs so you see all modes in one view.
           </p>
         </section>
       </div>
@@ -267,7 +261,6 @@ export default function Home() {
   );
 }
 
-// simple shared style for suggestion chips
 const chipStyle = {
   padding: "8px 14px",
   borderRadius: "20px",
