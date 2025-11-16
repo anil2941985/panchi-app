@@ -78,14 +78,15 @@ export default function Search() {
         </p>
 
         <form
-          onSubmit={handleSearch}
-          style={{
-            display: "grid",
-            gap: 12,
-            gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))",
-            marginBottom: 20,
-          }}
-        >
+  onSubmit={handleSearch}
+  style={{
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "12px",
+    marginBottom: "20px",
+    alignItems: "flex-end",
+  }}
+>
           <div>
             <label style={{ fontSize: 12, opacity: 0.7 }}>From</label>
             <input
