@@ -101,6 +101,24 @@ export default function Home() {
             </div>
           </div>
         </section>
+              <div style={{ marginTop: "12px" }}>
+          <a
+            href="/search"
+            style={{
+              display: "inline-block",
+              padding: "10px 18px",
+              borderRadius: "20px",
+              background:
+                "linear-gradient(135deg,#1E90FF 0%,#FF6F61 50%,#FFB347 100%)",
+              color: "#fff",
+              fontWeight: 600,
+              textDecoration: "none",
+              boxShadow: "0 10px 22px rgba(0,0,0,0.18)",
+            }}
+          >
+            View sample cheapest flights →
+          </a>
+        </div>
 
         <section>
           <h2 style={{ fontSize: "18px", marginBottom: "8px" }}>
