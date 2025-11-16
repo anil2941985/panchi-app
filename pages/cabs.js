@@ -48,33 +48,7 @@ export default function Cabs() {
         }}
       >
         {/* Header with logo + back */}
-        <header
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 24,
-          }}
-        >
-          <a
-            href="/"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              textDecoration: "none",
-            }}
-          >
-            <span style={{ fontSize: "18px", color: "#1E90FF" }}>◀︎</span>
-            <img
-              src="/panchi-logo.png"
-              alt="Panchi Logo"
-              style={{ height: "30px", width: "auto" }}
-            />
-          </a>
-          <div style={{ fontSize: 14, opacity: 0.7 }}>Cab options · MVP</div>
-        </header>
-
+        
         <h1 style={{ fontSize: 22, marginBottom: 8 }}>
           Find the cheapest cab from the airport
         </h1>
@@ -82,7 +56,47 @@ export default function Cabs() {
           This MVP compares a few typical options (Local Taxi, Ola, Uber). In
           the full version, Panchi will plug into live cab APIs and show you
           surge alerts, traffic delays and best drop-off timings.
-        </p>
+<header
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
+  }}
+>
+  {/* Back Button */}
+  <a
+    href="/"
+    style={{
+      textDecoration: "none",
+      fontSize: "18px",
+      color: "#1E90FF",
+      fontWeight: 600,
+    }}
+  >
+    ◀︎
+  </a>
+
+  {/* Center Logo */}
+  <img
+    src="/panchi-logo.png"
+    alt="Panchi Logo"
+    style={{
+      height: "46px",
+      width: "auto",
+      display: "block",
+      margin: "0 auto",
+      flexGrow: 1,
+      objectFit: "contain",
+    }}
+  />
+
+  {/* Right Label */}
+  <div style={{ width: 110, textAlign: "right", fontSize: 14, opacity: 0.7 }}>
+    Cab options · MVP
+  </div>
+</header>
+      </p>
 
         <div style={{ marginBottom: 16 }}>
           <button
