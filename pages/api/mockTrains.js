@@ -1,6 +1,7 @@
+// pages/api/mockTrains.js
+
 export default function handler(req, res) {
-  // Simple mock trains for DEL -> GOI direction (Goa via Madgaon)
-  // timings and prices are illustrative only
+  // Simple mock trains for DEL -> GOA direction (illustrative only)
   const trains = [
     {
       name: "Vande Bharat Express",
