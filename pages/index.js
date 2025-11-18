@@ -28,11 +28,12 @@ export default function Home() {
     e.preventDefault();
     const text = destinationText.toLowerCase();
 
+    // For MVP we always route to DEL -> GOI flights.
+    // Later the AI planner will map any text to real routes.
     let origin = "DEL";
     let dest = "GOI";
 
-    if (text.includes("manali")) dest = "KUU";
-    else if (text.includes("jaipur")) dest = "JAI";
+    if (text.includes("goa")) dest = "GOI";
 
     const params = new URLSearchParams({
       origin,
@@ -82,10 +83,10 @@ export default function Home() {
             <img
               src="/panchi-logo.png"
               alt="Panchi Logo"
-              style={{ height: "70px", width: "auto" }} // BIGGER LOGO
+              style={{ height: "70px", width: "auto" }}
             />
           </div>
-          <div style={{ fontSize: "14px", opacity: 0.7 }}>Cheapest flights · MVP</div>
+          <div style={{ fontSize: "14px", opacity: 0.7 }}>Cheapest trips · MVP</div>
         </header>
 
         {/* HERO CARD */}
@@ -107,8 +108,8 @@ export default function Home() {
           </h1>
           <p style={{ fontSize: "14px", opacity: 0.9 }}>
             Panchi will find the smartest and cheapest ways to reach your
-            destination — starting with flights in this MVP, and later adding
-            trains, buses and cabs.
+            destination — starting with flights in this MVP, and adding trains,
+            buses and cabs in the next phases.
           </p>
         </section>
 
@@ -205,7 +206,7 @@ export default function Home() {
         </section>
 
         {/* QUICK SUGGESTIONS */}
-        <section>
+        <section style={{ marginBottom: "22px" }}>
           <h3 style={{ fontSize: "16px", marginBottom: "8px" }}>
             Or pick a quick idea
           </h3>
@@ -220,17 +221,53 @@ export default function Home() {
             <button style={chip} onClick={() => goToSearch("DEL", "GOI")}>
               Goa for the weekend 🏖️
             </button>
-            <button style={chip} onClick={() => goToSearch("DEL", "KUU")}>
-              Manali escape ❄️
-            </button>
-            <button style={chip} onClick={() => goToSearch("DEL", "JAI")}>
-              Jaipur & forts 🏰
-            </button>
+            <button style={chip}>Manali escape ❄️ (coming soon)</button>
+            <button style={chip}>Jaipur & forts 🏰 (coming soon)</button>
           </div>
 
           <p style={{ fontSize: "13px", opacity: 0.75 }}>
             For now we start from Delhi and focus on flights. In the next phase
             we plug in trains, buses and cabs so you see all modes in one view.
+          </p>
+        </section>
+
+        {/* EXPLORE BY MODE – stitches all pages */}
+        <section>
+          <h3 style={{ fontSize: "16px", marginBottom: "10px" }}>
+            Explore by mode (MVP screens)
+          </h3>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "10px",
+            }}
+          >
+            <a href="/search" style={{ textDecoration: "none" }}>
+              <button style={modePillPrimary}>Flights</button>
+            </a>
+
+            <a href="/trains" style={{ textDecoration: "none" }}>
+              <button style={modePill}>Trains</button>
+            </a>
+
+            <a href="/buses" style={{ textDecoration: "none" }}>
+              <button style={modePill}>Buses</button>
+            </a>
+
+            <a href="/cabs" style={{ textDecoration: "none" }}>
+              <button style={modePill}>Cabs</button>
+            </a>
+
+            <a href="/all-modes" style={{ textDecoration: "none" }}>
+              <button style={modePillOutline}>All modes view</button>
+            </a>
+          </div>
+
+          <p style={{ fontSize: "12px", opacity: 0.7, marginTop: "8px" }}>
+            These are working MVP screens with mock data for Delhi → Goa, to
+            show how Panchi will compare every option on one platform.
           </p>
         </section>
       </div>
@@ -246,4 +283,34 @@ const chip = {
   cursor: "pointer",
   background: "rgba(30,144,255,0.08)",
   color: "#222",
+};
+
+const modePillBase = {
+  padding: "9px 16px",
+  borderRadius: "999px",
+  border: "none",
+  fontSize: "13px",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+const modePillPrimary = {
+  ...modePillBase,
+  background:
+    "linear-gradient(135deg,#1E90FF 0%,#FF6F61 50%,#FFB347 100%)",
+  color: "#fff",
+  boxShadow: "0 10px 20px rgba(0,0,0,0.12)",
+};
+
+const modePill = {
+  ...modePillBase,
+  background: "rgba(30,144,255,0.06)",
+  color: "#222",
+};
+
+const modePillOutline = {
+  ...modePillBase,
+  background: "transparent",
+  border: "1px solid rgba(30,144,255,0.4)",
+  color: "#1E90FF",
 };
