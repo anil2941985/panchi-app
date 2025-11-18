@@ -26,19 +26,11 @@ export default function Home() {
 
   function handleFreeTextSearch(e) {
     e.preventDefault();
+    // In future we’ll send this text to the AI planner.
+    // For now we ignore it and show the all-modes AI-style decision screen.
     const text = destinationText.toLowerCase();
-
-    let origin = "DEL";
-    let dest = "GOI";
-
-    if (text.includes("goa")) dest = "GOI";
-
-    const params = new URLSearchParams({
-      origin,
-      destination: dest,
-    }).toString();
-
-    window.location.href = `/search?${params}`;
+    console.log("User asked for:", text);
+    window.location.href = "/all-modes";
   }
 
   function goToSearch(origin, dest) {
@@ -108,8 +100,8 @@ export default function Home() {
           </h1>
           <p style={{ fontSize: "14px", opacity: 0.9 }}>
             Panchi will find the smartest and cheapest ways to reach your
-            destination — starting with flights in this MVP, and adding trains,
-            buses and cabs in the next phases.
+            destination — starting with this MVP that compares flights, trains,
+            buses and cabs for you automatically.
           </p>
         </section>
 
@@ -226,12 +218,12 @@ export default function Home() {
           </div>
 
           <p style={{ fontSize: "13px", opacity: 0.75 }}>
-            For now we start from Delhi and focus on flights. In the next phase
-            we plug in trains, buses and cabs so you see all modes in one view.
+            For now we start from Delhi and show how Panchi will compare every
+            mode on one screen. Live APIs and AI itineraries are the next step.
           </p>
         </section>
 
-        {/* EXPLORE BY MODE – stitches all pages */}
+        {/* EXPLORE BY MODE – still there for manual demo */}
         <section style={{ marginBottom: 18 }}>
           <h3 style={{ fontSize: "16px", marginBottom: "10px" }}>
             Explore by mode (MVP screens)
