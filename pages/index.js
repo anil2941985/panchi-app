@@ -28,8 +28,6 @@ export default function Home() {
     e.preventDefault();
     const text = destinationText.toLowerCase();
 
-    // For MVP we always route to DEL -> GOI flights.
-    // Later the AI planner will map any text to real routes.
     let origin = "DEL";
     let dest = "GOI";
 
@@ -86,7 +84,9 @@ export default function Home() {
               style={{ height: "70px", width: "auto" }}
             />
           </div>
-          <div style={{ fontSize: "14px", opacity: 0.7 }}>Cheapest trips · MVP</div>
+          <div style={{ fontSize: "14px", opacity: 0.7 }}>
+            Cheapest trips · MVP
+          </div>
         </header>
 
         {/* HERO CARD */}
@@ -232,7 +232,7 @@ export default function Home() {
         </section>
 
         {/* EXPLORE BY MODE – stitches all pages */}
-        <section>
+        <section style={{ marginBottom: 18 }}>
           <h3 style={{ fontSize: "16px", marginBottom: "10px" }}>
             Explore by mode (MVP screens)
           </h3>
@@ -269,6 +269,49 @@ export default function Home() {
             These are working MVP screens with mock data for Delhi → Goa, to
             show how Panchi will compare every option on one platform.
           </p>
+        </section>
+
+        {/* JOIN WAITLIST CTA */}
+        <section
+          style={{
+            marginTop: 4,
+            paddingTop: 10,
+            borderTop: "1px solid rgba(0,0,0,0.06)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 10,
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ fontSize: 13, opacity: 0.8, maxWidth: 420 }}>
+              Want to try the full AI travel companion when it’s ready?
+              Join the early access list and we’ll share the next builds with you
+              and selected investors.
+            </div>
+            <a href="/waitlist" style={{ textDecoration: "none" }}>
+              <button
+                style={{
+                  padding: "9px 18px",
+                  borderRadius: 999,
+                  border: "none",
+                  cursor: "pointer",
+                  background:
+                    "linear-gradient(135deg,#1E90FF 0%,#FF6F61 50%,#FFB347 100%)",
+                  color: "#fff",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  boxShadow: "0 10px 20px rgba(0,0,0,0.16)",
+                }}
+              >
+                Join waitlist
+              </button>
+            </a>
+          </div>
         </section>
       </div>
     </main>
