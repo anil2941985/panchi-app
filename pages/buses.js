@@ -139,3 +139,86 @@ export default function Buses() {
             <div
               style={{
                 marginBottom: 16,
+                padding: 14,
+                borderRadius: 18,
+                background:
+                  "linear-gradient(135deg,#32CD32 0%,#FFB347 100%)",
+                color: "#fff",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 12,
+                  textTransform: "uppercase",
+                  opacity: 0.8,
+                }}
+              >
+                Cheapest bus 🔥
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>
+                {cheapest.operator}
+              </div>
+              <div style={{ fontSize: 14 }}>
+                {cheapest.depart} → {cheapest.arrive || "Next day"} ·{" "}
+                {cheapest.duration}
+              </div>
+              <div style={{ fontSize: 13, marginTop: 2 }}>
+                Type: {cheapest.type} · Rating: ⭐ {cheapest.rating}
+              </div>
+              <div style={{ fontSize: 18, marginTop: 4 }}>
+                ₹{cheapest.price}
+              </div>
+              <button
+                style={{
+                  marginTop: 8,
+                  padding: "8px 14px",
+                  borderRadius: 16,
+                  border: "none",
+                  background: "rgba(255,255,255,0.18)",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Book (placeholder)
+              </button>
+            </div>
+
+            {/* Other buses */}
+            {buses.slice(1).map((b, idx) => (
+              <div
+                key={idx}
+                style={{
+                  marginBottom: 10,
+                  padding: 12,
+                  borderRadius: 14,
+                  background: "#F7FAFF",
+                  border: "1px solid rgba(30,144,255,0.16)",
+                }}
+              >
+                <div style={{ fontWeight: 600 }}>{b.operator}</div>
+                <div style={{ fontSize: 13, opacity: 0.8 }}>
+                  {b.depart} → {b.arrive || "Next day"} · {b.duration}
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.8 }}>
+                  Type: {b.type} · Rating: ⭐ {b.rating}
+                </div>
+                <div style={{ marginTop: 4, fontWeight: 600 }}>
+                  ₹{b.price}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {buses.length === 0 && !loading && !error && (
+          <p style={{ fontSize: 13, opacity: 0.75, marginTop: 12 }}>
+            Loading sample bus options… If nothing appears, tap “Refresh bus
+            options”.
+          </p>
+        )}
+      </div>
+    </main>
+  );
+}
