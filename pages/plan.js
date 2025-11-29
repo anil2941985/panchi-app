@@ -186,11 +186,8 @@ export default function PlanPage() {
 
           <div className="card">
             <h4 className="section-title">Safety index</h4>
-            <div className="safety-row">
-              <div>Destination: <b>{dest}</b></div>
-              <div className="s-bar"><div className="s-fill" style={{ width: "78%" }} /></div>
-              <div className="muted small">Score: 78 / 100 — Generally safe; avoid late-night beaches during festivals.</div>
-            </div>
+            <div className="s-bar"><div className="s-fill" style={{ width: "78%" }} /></div>
+            <div className="muted small">Score: 78 / 100 — Generally safe; avoid late-night beaches during festivals.</div>
           </div>
         </aside>
       </main>
@@ -262,7 +259,6 @@ export default function PlanPage() {
           .logo { width:180px; }
           .title { font-size:28px; }
           .subtitle { font-size:15px; }
-          .cards-inline { display:flex; gap:12px; }
           .controls-row { flex-direction:row; align-items:center; justify-content:space-between; }
           .tabs { width:auto; flex:0 0 320px; display:flex; gap:8px; }
         }
@@ -279,4 +275,3 @@ export default function PlanPage() {
     </div>
   );
 }
-```0
