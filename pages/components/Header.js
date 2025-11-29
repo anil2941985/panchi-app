@@ -1,44 +1,22 @@
-import React, { useState } from "react";
+// pages/components/Header.jsx
+import Link from "next/link";
 
-export default function Header({ userName = "there", onPlan }) {
-  const [q, setQ] = useState("");
-
-  const handlePlan = () => {
-    if (onPlan) onPlan(q);
-  };
-
+export default function Header() {
   return (
-    <div className="header-row">
-      <div className="header-left">
-        <div className="small-muted" style={{ marginBottom: 6 }}>
-          Hey, <strong style={{ color: "#0f1724" }}>{userName}</strong>
-        </div>
-
-        <h1 className="h1">Where are we going next?</h1>
-
-        <p className="lead">
-          Panchi finds the smartest, safest and cheapest ways to reach your
-          destination — starting with flights in this MVP, and later adding
-          trains, buses and cabs.
-        </p>
-
-        <div className="search-row" style={{ marginTop: 6 }}>
-          <input
-            className="search-input"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={'Try "Goa", "Manali", "Jaipur" or "beach under 5k"'}
-          />
-
-          <button className="header-cta" onClick={handlePlan}>
-            Let Panchi plan →
-          </button>
-        </div>
+    <header className="py-5 px-6 bg-white/40 backdrop-blur">
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <Link href="/">
+          <a className="flex items-center gap-3">
+            <img src="/panchi-logo.png" alt="Panchi" className="w-12 h-12 object-contain" />
+            <span className="font-bold text-lg">Panchi</span>
+          </a>
+        </Link>
+        <nav className="hidden md:flex gap-4 items-center">
+          <a className="text-sm text-gray-700">Explore</a>
+          <a className="text-sm text-gray-700">Plans</a>
+          <a className="text-sm text-gray-700">Community</a>
+        </nav>
       </div>
-
-      <div className="header-right">
-        <img src="/panchi-logo.png" alt="Panchi" style={{ height: 64 }} />
-      </div>
-    </div>
+    </header>
   );
 }
