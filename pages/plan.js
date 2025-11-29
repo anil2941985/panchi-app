@@ -2,13 +2,16 @@
 import { useEffect, useState, useRef } from "react";
 
 /*
-  Panchi - Full AI Planner (single-file)
-  - Advanced timeline
+  Panchi - Full AI Planner (single-file replacement)
+  - Advanced timeline & scoring
+  - Trending card layout (full replacement)
   - Deep-link bullets -> scroll & highlight
-  - Smarter scoring engine (price/duration/events/weather/reviews/trend)
-  - No trip-type prompt (auto mode)
-  - Premium gradient styling
-  Notes: relies on your mock APIs if present. Falls back to internal mock generators.
+  - Save alerts -> localStorage
+  Notes:
+  - Optional mock APIs: /api/mockNudges, /api/mockEvents, /api/mockHotPlaces,
+    /api/mockCommunity, /api/mockFlights, /api/mockTrains, /api/mockBuses,
+    /api/mockCabs, /api/mockPriceTrends
+  - Falls back to internal synth if APIs are missing.
 */
 
 export default function PlanPage() {
@@ -47,7 +50,7 @@ export default function PlanPage() {
   const timelineRef = useRef(null);
 
   useEffect(() => {
-    // read destination
+    // read destination from URL
     if (typeof window !== "undefined") {
       const q = new URLSearchParams(window.location.search);
       const dest = q.get("destination") || q.get("q") || "Goa";
@@ -105,15 +108,15 @@ export default function PlanPage() {
         fetch("/api/mockPriceTrends"),
       ]);
 
-      const nudgesData = nudgesRes.status === "fulfilled" && nudgesRes.value.ok ? await nudgesRes.value.json() : [];
-      const eventsData = eventsRes.status === "fulfilled" && eventsRes.value.ok ? await eventsRes.value.json() : [];
-      const hotData = hotRes.status === "fulfilled" && hotRes.value.ok ? await hotRes.value.json() : [];
-      const reviewsData = reviewsRes.status === "fulfilled" && reviewsRes.value.ok ? await reviewsRes.value.json() : [];
+      const nudgesData = nudgesRes.status === "fulfilled" && nudgesRes.value.ok ? await nudgesRes.value.json() : simpleMockNudges();
+      const eventsData = eventsRes.status === "fulfilled" && eventsRes.value.ok ? await eventsRes.value.json() : simpleMockEvents();
+      const hotData = hotRes.status === "fulfilled" && hotRes.value.ok ? await hotRes.value.json() : simpleMockHotPlaces();
+      const reviewsData = reviewsRes.status === "fulfilled" && reviewsRes.value.ok ? await reviewsRes.value.json() : simpleMockReviews();
 
-      const flightsData = flightsRes.status === "fulfilled" && flightsRes.value.ok ? await flightsRes.value.json() : [];
-      const trainsData = trainsRes.status === "fulfilled" && trainsRes.value.ok ? await trainsRes.value.json() : [];
-      const busesData = busesRes.status === "fulfilled" && busesRes.value.ok ? await busesRes.value.json() : [];
-      const cabsData = cabsRes.status === "fulfilled" && cabsRes.value.ok ? await cabsRes.value.json() : [];
+      const flightsData = flightsRes.status === "fulfilled" && flightsRes.value.ok ? await flightsRes.value.json() : simpleMockFlights(destination);
+      const trainsData = trainsRes.status === "fulfilled" && trainsRes.value.ok ? await trainsRes.value.json() : simpleMockTrains(destination);
+      const busesData = busesRes.status === "fulfilled" && busesRes.value.ok ? await busesRes.value.json() : simpleMockBuses(destination);
+      const cabsData = cabsRes.status === "fulfilled" && cabsRes.value.ok ? await cabsRes.value.json() : simpleMockCabs(destination);
 
       let trendData = [];
       if (trendRes.status === "fulfilled" && trendRes.value.ok) {
@@ -195,7 +198,7 @@ export default function PlanPage() {
   function saveAlert() {
     try {
       const alerts = (typeof window !== "undefined" && JSON.parse(window.localStorage.getItem("panchiAlerts") || "[]")) || [];
-      alerts.push({ destination, when: new Date().toISOString(), verdict });
+      alerts.unshift({ destination, when: new Date().toISOString(), verdict });
       if (typeof window !== "undefined") window.localStorage.setItem("panchiAlerts", JSON.stringify(alerts));
       setSavedAlerts(alerts);
       toast("Saved alert — Panchi will watch this destination.");
@@ -265,7 +268,6 @@ export default function PlanPage() {
       const raw = (1 - p) * 0.5 + (1 - w) * 0.3 + (1 - e) * 0.2;
       return { ...d, score: Math.round(raw * 100) / 100 };
     });
-    // sort days by date (they should already be)
     return out;
   }
 
@@ -280,14 +282,14 @@ export default function PlanPage() {
     // hot place effect
     const hot = hotPlaces.find((h) => h.title && h.title.toLowerCase() === dest);
     if (hot) {
-      bullets.push(`${hot.title} trending — ${hot.reason} (budget ${hot.budget}).`);
+      bullets.push(`${hot.title} trending — ${hot.reason || hot.subtitle} (budget ${hot.budget || "varies"}).`);
       score += 8;
       bullets.push("Trending implies higher demand; consider weekday or early booking.");
       score -= 4;
     }
 
     // relevant nudges
-    const relevantNudges = nudges.filter((n) => {
+    const relevantNudges = (nudges || []).filter((n) => {
       return (
         (n.title && n.title.toLowerCase().includes(dest)) ||
         (n.detail && n.detail.toLowerCase().includes(dest)) ||
@@ -300,10 +302,10 @@ export default function PlanPage() {
         bullets.push(`Weather: ${n.title} — ${n.detail}`);
         score -= 14;
       } else if (n.type === "pricing") {
-        bullets.push(`Price alert: ${n.title} — ${n.impact}`);
+        bullets.push(`Price alert: ${n.title} — ${n.impact || n.detail}`);
         score -= 10;
       } else if (n.type === "traffic") {
-        bullets.push(`Traffic advisory: ${n.title} — ${n.impact}`);
+        bullets.push(`Traffic advisory: ${n.title} — ${n.impact || n.detail}`);
         score -= 6;
       } else if (n.type === "event") {
         bullets.push(`Event notice: ${n.title} — ${n.detail}`);
@@ -312,20 +314,19 @@ export default function PlanPage() {
     });
 
     // relevant events
-    const relevantEvents = events.filter((ev) => ev.location && ev.location.toLowerCase().includes(dest));
+    const relevantEvents = (events || []).filter((ev) => ev.location && ev.location.toLowerCase().includes(dest));
     relevantEvents.forEach((ev) => {
-      bullets.push(`Event: ${ev.title} on ${ev.date} — ${ev.impact}`);
+      bullets.push(`Event: ${ev.title} on ${ev.date} — ${ev.impact || ""}`);
       if (ev.severity === "high") score -= 18;
       else if (ev.severity === "medium") score -= 9;
       else score -= 4;
     });
 
     // community signals (ratings & tips)
-    const relevantReviews = reviews.filter((r) => r.location && r.location.toLowerCase().includes(dest));
+    const relevantReviews = (reviews || []).filter((r) => r.location && r.location.toLowerCase().includes(dest));
     if (relevantReviews.length > 0) {
       const avg = Math.round((relevantReviews.reduce((s, r) => s + (r.rating || 4.5), 0) / relevantReviews.length) * 10) / 10;
       bullets.push(`Community: ${relevantReviews.length} recent notes — average rating ${avg} ⭐`);
-      // more positive -> increase score
       score += (avg - 4.0) * 4;
     }
 
@@ -335,7 +336,6 @@ export default function PlanPage() {
       const worst = timeline.reduce((acc, d) => (d.score < (acc.score || 999) ? d : acc), {});
       bullets.push(`Best upcoming day: ${formatDate(best.date)} (score ${Math.round(best.score * 100) / 100})`);
       bullets.push(`Avoid day: ${formatDate(worst.date)} if possible.`);
-      // nudge depending on best day score
       if (best.score < 0.45) score -= 6;
       else score += 6;
     }
@@ -370,8 +370,7 @@ export default function PlanPage() {
   }
 
   /* ----------------------
-     SCORING ENGINE (all in one)
-     finalScore = weighted combination (lower better)
+     SCORING ENGINE
   ---------------------- */
   function scoreOptions({ destination, flight, train, bus, cab, context, timelineDay }) {
     const opts = [];
@@ -380,38 +379,30 @@ export default function PlanPage() {
     if (bus) opts.push({ key: "bus", label: "Bus", data: bus });
     if (cab) opts.push({ key: "cab", label: "Cab", data: cab });
 
-    // simple arrays to compute min/max
     const priced = opts.map((o) => {
       const price = o.data && typeof o.data.price === "number" ? o.data.price : 999999;
       const durationMin = parseDuration(o.data && o.data.duration ? o.data.duration : "");
       return { ...o, price, durationMin };
     });
 
+    if (priced.length === 0) return [];
+
     const minPrice = Math.min(...priced.map((p) => p.price));
     const maxPrice = Math.max(...priced.map((p) => p.price));
     const minDur = Math.min(...priced.map((p) => p.durationMin));
     const maxDur = Math.max(...priced.map((p) => p.durationMin));
 
-    // derive context components
-    const eventPenalties = {}; // per mode
-    const weatherRisk = deriveWeatherRisk(context.relevantNudges || [], context.relevantEvents || []);
-    const communityPenalty = deriveCommunityPenalty(context.sampleReviews || [], context);
+    const eventPenalties = {};
+    priced.forEach((p) => (eventPenalties[p.key] = 0));
 
-    priced.forEach((p) => {
-      eventPenalties[p.key] = 0;
-    });
-
-    // compute event-driven penalties
     (context.relevantEvents || []).forEach((ev) => {
       const severityWeight = ev.severity === "high" ? 1 : ev.severity === "medium" ? 0.6 : 0.25;
-      // intrusive events affect cabs most, buses moderately, flights moderately
       if (eventPenalties.cab !== undefined) eventPenalties.cab += 30 * severityWeight;
       if (eventPenalties.bus !== undefined) eventPenalties.bus += 12 * severityWeight;
       if (eventPenalties.flight !== undefined) eventPenalties.flight += 10 * severityWeight;
       if (eventPenalties.train !== undefined) eventPenalties.train += 4 * severityWeight;
     });
 
-    // nudge-driven penalties (traffic/pricing/weather)
     (context.relevantNudges || []).forEach((n) => {
       if (n.type === "pricing") {
         if (eventPenalties.flight !== undefined) eventPenalties.flight += 12;
@@ -425,11 +416,11 @@ export default function PlanPage() {
       }
     });
 
-    // timelineDay trend penalty (if selected day has low score)
-    const timelinePenaltyFactor = timelineDay ? Math.max(0, (0.6 - timelineDay.score)) * 30 : 0; // if score < 0.6, penalize
+    const weatherRisk = deriveWeatherRisk(context.relevantNudges || [], context.relevantEvents || []);
+    const communityPenalty = deriveCommunityPenalty(context.sampleReviews || [], context);
 
-    // scoring weights (final lower means better)
-    // price: 0.45, duration: 0.20, events/weather/community/trend combined: 0.35
+    const timelinePenaltyFactor = timelineDay ? Math.max(0, (0.6 - timelineDay.score)) * 30 : 0;
+
     const results = priced.map((p) => {
       const priceComp = normalize(p.price, minPrice, maxPrice); // 0..1
       const durComp = normalize(p.durationMin, minDur, maxDur);
@@ -437,16 +428,16 @@ export default function PlanPage() {
       const durScore = durComp * 100;
 
       const eventPenalty = eventPenalties[p.key] || 0;
-      const weatherPenalty = (weatherRisk || 0) * 40; // scaled
-      const communityComp = communityPenalty; // 0..30 (higher = worse)
+      const weatherPenalty = (weatherRisk || 0) * 40;
+      const communityComp = communityPenalty;
       const trendPenalty = timelinePenaltyFactor * (p.key === "flight" ? 0.9 : p.key === "cab" ? 0.8 : 0.6);
 
       const combinedPenalty = eventPenalty + weatherPenalty + communityComp + trendPenalty;
 
       const final =
-        priceScore * 0.45 + // price weighted
-        durScore * 0.2 + // duration
-        combinedPenalty * 0.35; // context penalties
+        priceScore * 0.45 +
+        durScore * 0.2 +
+        combinedPenalty * 0.35;
 
       return {
         ...p,
@@ -460,7 +451,6 @@ export default function PlanPage() {
       };
     });
 
-    // sort ascending
     results.sort((a, b) => a.finalScore - b.finalScore);
     return results;
   }
@@ -486,18 +476,15 @@ export default function PlanPage() {
   }
 
   function deriveWeatherRisk(nudgesArr, eventsArr) {
-    // quick heuristic: if any weather nudge exists, return 0.6, else if events heavy and season=monsoon maybe 0.5
     if ((nudgesArr || []).some((n) => n.type === "weather")) return 0.6;
     if ((eventsArr || []).some((e) => e.severity === "high")) return 0.35;
     return 0.12;
   }
 
   function deriveCommunityPenalty(sampleReviews, context) {
-    // average rating effect
-    if (!sampleReviews || sampleReviews.length === 0) return 8; // baseline
+    if (!sampleReviews || sampleReviews.length === 0) return 8;
     const avg = sampleReviews.reduce((s, r) => s + (r.rating || 4.5), 0) / sampleReviews.length;
-    // 5-star => small penalty, 3-star => big penalty
-    return Math.max(0, (5 - avg) * 6); // 0..12
+    return Math.max(0, (5 - avg) * 6);
   }
 
   /* ----------------------
@@ -553,10 +540,9 @@ export default function PlanPage() {
 
               <div className="verdictBullets">
                 {verdict.bullets.map((b, i) => {
-                  // basic heuristics to map bullet to section
                   const lower = b.toLowerCase();
                   let target = "nudges";
-                  if (lower.includes("event") || lower.includes("festival") || lower.includes("ipl") || lower.includes("visarjan")) target = "events";
+                  if (lower.includes("event") || lower.includes("festival") || lower.includes("visarjan")) target = "events";
                   else if (lower.includes("weather") || lower.includes("rain")) target = "nudges";
                   else if (lower.includes("best upcoming day") || lower.includes("avoid day")) target = "timeline";
                   else if (lower.includes("community")) target = "reviews";
@@ -587,7 +573,6 @@ export default function PlanPage() {
                       className={`dayPill ${color} ${selectedDay && selectedDay.date === d.date ? "active" : ""}`}
                       onClick={() => {
                         setSelectedDay(d);
-                        // re-rank with selected day bias
                         const newRanked = scoreOptions({
                           destination,
                           flight,
@@ -598,7 +583,6 @@ export default function PlanPage() {
                           timelineDay: d,
                         });
                         setRanked(newRanked);
-                        // scroll to results
                         setTimeout(() => {
                           const el = document.getElementById("results-section");
                           if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -618,19 +602,19 @@ export default function PlanPage() {
             </div>
           </section>
 
-          {/* SIGNALS: Nudges / Events / Hot / Reviews */}
+          {/* SIGNALS grid: left nudges, right content */}
           <section className="signals">
             <div className="grid">
-              <div ref={nudgesRef} id="nudges-section" className="card">
+              {/* LEFT: Nudges sidebar */}
+              <div ref={nudgesRef} id="nudges-section" className="card nudgesSidebar">
                 <h4>Nudges & alerts</h4>
-                <div className="miniGrid">
-                  {(nudges || []).slice(0, 6).map((n) => (
-                    <div key={n.id} className="nudge">
-                      <div className="nudgeIcon">{n.icon}</div>
-                      <div className="nudgeBody">
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {(nudges || []).slice(0, 10).map((n) => (
+                    <div key={n.id || n.title} className="nudgeRow">
+                      <div className="nudgeIcon">{n.icon || (n.type === "weather" ? "☔" : n.type === "pricing" ? "🔥" : "⚠️")}</div>
+                      <div className="nudgeContent">
                         <div className="nudgeTitle">{n.title}</div>
                         <div className="nudgeDetail">{n.detail}</div>
-                        <div className="nudgeImpact">{n.impact}</div>
                       </div>
                     </div>
                   ))}
@@ -638,53 +622,83 @@ export default function PlanPage() {
                 </div>
               </div>
 
-              <div ref={eventsRef} id="events-section" className="card">
-                <h4>Events & crowd alerts</h4>
-                {(events || []).length === 0 && <div className="mutedBox">No events</div>}
-                <div style={{ display: "grid", gap: 10 }}>
-                  {(events || []).map((ev) => (
-                    <div className="event" key={ev.id}>
-                      <div className={`severity ${ev.severity}`}>{ev.severity.toUpperCase()}</div>
-                      <div className="eventBody">
-                        <div className="eventTitle">{ev.title}</div>
-                        <div className="eventMeta">{ev.location} · {ev.date}</div>
-                        <div className="eventImpact">{ev.impact}</div>
-                        <div className="eventAction">Panchi: {ev.recommendedAction}</div>
+              {/* RIGHT: Events + Trending + Reviews */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div ref={eventsRef} id="events-section" className="card">
+                  <h4>Events & crowd alerts</h4>
+                  {(events || []).length === 0 && <div className="mutedBox">No events</div>}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {(events || []).map((ev) => (
+                      <div className="event" key={ev.id || ev.title}>
+                        <div className={`severity ${ev.severity || "low"}`}>{(ev.severity || "low").toUpperCase()}</div>
+                        <div className="eventBody">
+                          <div className="eventTitle">{ev.title}</div>
+                          <div className="eventMeta">{ev.location} · {ev.date}</div>
+                          <div className="eventImpact">{ev.impact}</div>
+                          <div className="eventAction">Panchi: {ev.recommendedAction || "Check local advisories."}</div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div ref={hotRef} id="hot-section" className="card">
-                <h4>Hot places</h4>
-                {(hotPlaces || []).length === 0 && <div className="mutedBox">No trending data</div>}
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  {(hotPlaces || []).slice(0, 6).map((h) => (
-                    <div key={h.id} className="hotCard">
-                      <div className="hotEmoji">{h.emoji}</div>
-                      <div>
-                        <div className="hotTitle">{h.title}</div>
-                        <div className="hotReason">{h.reason}</div>
-                        <div className="hotBudget">Budget {h.budget}</div>
+                {/* TRENDING cards (REPLACED) */}
+                <div ref={hotRef} id="hot-section" className="card hotSection">
+                  <h4>Trending trips & ideas</h4>
+
+                  {(hotPlaces || []).length === 0 && <div className="mutedBox">No trending data</div>}
+
+                  <div className="trendingGrid">
+                    {(hotPlaces || []).slice(0, 6).map((h) => (
+                      <article key={h.id || h.title} className="trendCard">
+                        <div
+                          className="trendImage"
+                          style={{ backgroundImage: `url(${h.image || "/placeholder-trip.jpg"})` }}
+                        >
+                          <div className="trendBadge">{h.tag || "Popular"}</div>
+                        </div>
+                        <div className="trendBody">
+                          <div>
+                            <div className="trendTitle">{h.title}</div>
+                            <div className="trendMeta">{h.subtitle || h.reason || ""}</div>
+                          </div>
+                          <div className="trendFooter">
+                            <div className="trendBudget">₹{h.budget || "Varies"}</div>
+                            <button
+                              className="trendBtn"
+                              onClick={() => {
+                                setDestination(h.title);
+                                // update url and re-run planner
+                                if (typeof window !== "undefined") {
+                                  const url = new URL(window.location.href);
+                                  url.searchParams.set("destination", h.title);
+                                  window.history.pushState({}, "", url.toString());
+                                }
+                                setTimeout(runPlanner, 80);
+                              }}
+                            >
+                              Explore
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+
+                <div ref={reviewsRef} id="reviews-section" className="card">
+                  <h4>Community notes</h4>
+                  {(reviews || []).length === 0 && <div className="mutedBox">No community reviews</div>}
+                  <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 6 }}>
+                    {(reviews || []).slice(0, 8).map((r) => (
+                      <div className="review" key={r.id || r.name}>
+                        <div className="revHeader">{r.name} · {r.rating} ⭐</div>
+                        <div className="revLoc">{r.location || ""} {r.emoji || ""}</div>
+                        <div className="revText">{r.review}</div>
+                        <div className="revTip">Tip: {r.tip}</div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div ref={reviewsRef} id="reviews-section" className="card">
-                <h4>Community notes</h4>
-                {(reviews || []).length === 0 && <div className="mutedBox">No community reviews</div>}
-                <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 6 }}>
-                  {(reviews || []).slice(0, 8).map((r) => (
-                    <div className="review" key={r.id}>
-                      <div className="revHeader">{r.name} · {r.rating} ⭐</div>
-                      <div className="revLoc">{r.location} {r.emoji}</div>
-                      <div className="revText">{r.review}</div>
-                      <div className="revTip">Tip: {r.tip}</div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -737,9 +751,7 @@ export default function PlanPage() {
 }
 
 /* ----------------------
-   CSS (inline)
-   - premium gradient
-   - responsive
+   Inline CSS (full replacement) - trending layout + responsive
 ---------------------- */
 const pageCss = `
 :root{
@@ -748,9 +760,9 @@ const pageCss = `
   --card-bg: rgba(255,255,255,0.98);
 }
 *{box-sizing:border-box;font-family:Inter, Poppins, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
-body,html,#__next{margin:0;padding:0;background:radial-gradient(1200px 400px at 10% 10%, rgba(124,58,237,0.06), transparent), linear-gradient(180deg, rgba(14,165,233,0.02), rgba(255,255,255,0.02));}
+body,html,#__next{margin:0;padding:0;background:radial-gradient(1200px 400px at 10% 10%, rgba(124,58,237,0.04), transparent), linear-gradient(180deg, rgba(14,165,233,0.02), rgba(255,255,255,0.02));}
 .page{padding:28px 18px 80px;}
-.container{max-width:1100px;margin:0 auto;background:var(--card-bg);border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(16,24,40,0.12);}
+.container{max-width:1200px;margin:0 auto;background:var(--card-bg);border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(16,24,40,0.12);}
 
 /* header */
 .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px}
@@ -795,24 +807,117 @@ body,html,#__next{margin:0;padding:0;background:radial-gradient(1200px 400px at 
 .dayEmoji{font-size:18px}
 .dayScore{font-weight:800;margin-top:6px}
 
-/* signals grid */
-.signals{margin-bottom:18px}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-.card{padding:12px;border-radius:12px;background:white;box-shadow:0 8px 18px rgba(2,6,23,0.04)}
-.miniGrid{display:flex;flex-direction:column;gap:8px}
-.nudge{display:flex;gap:8px;align-items:flex-start}
-.nudgeIcon{font-size:20px}
-.nudgeTitle{font-weight:700}
-.nudgeDetail{font-size:13px;color:rgba(2,6,23,0.7)}
-.nudgeImpact{font-size:12px;color:#ff4d4d}
-.event{display:flex;gap:10px;align-items:flex-start;border-radius:8px;padding:8px;background:linear-gradient(180deg,#fff,#fafafa)}
-.event .severity{font-weight:800;padding:6px;border-radius:8px;background:rgba(0,0,0,0.05)}
-.eventBody{flex:1}
-.hotCard{display:flex;gap:8px;align-items:center;padding:8px;border-radius:10px;background:linear-gradient(180deg,rgba(14,165,233,0.06),rgba(124,58,237,0.04))}
-.hotEmoji{font-size:22px}
-.review{min-width:220px;border-radius:10px;padding:10px;background:linear-gradient(180deg,#fff,#fbfaff);box-shadow:0 6px 18px rgba(2,6,23,0.04)}
-.revHeader{font-weight:700}
-.revLoc{font-size:13px;color:rgba(2,6,23,0.6)}
+/* signals & trending layout - updated for trending card design */
+.signals { margin-bottom:18px; }
+
+/* Desktop: left narrow column + right content flow */
+.grid {
+  display: grid;
+  grid-template-columns: 300px 1fr; /* left sidebar (nudges) + right content */
+  gap: 18px;
+  align-items: start;
+}
+
+/* Generic card */
+.card {
+  padding: 14px;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 12px 30px rgba(2,6,23,0.04);
+}
+
+/* Nudges sidebar (left column) */
+.nudgesSidebar { max-height: 640px; overflow:auto; }
+
+/* EVENTS card style (right column, top) */
+#events-section.card {
+  display: block;
+}
+
+/* Trending section specifics */
+.hotSection { padding-bottom: 8px; }
+.trendingGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+/* single trending card */
+.trendCard {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #fff, #fcfcff);
+  box-shadow: 0 12px 28px rgba(2,6,23,0.06);
+  min-height: 120px;
+}
+
+/* image area */
+.trendImage {
+  height: 110px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+
+.trendBadge {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  background: rgba(0,0,0,0.55);
+  color: white;
+  font-weight:700;
+  padding: 6px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+/* body */
+.trendBody {
+  padding: 10px 12px 14px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  gap:8px;
+}
+
+.trendTitle {
+  font-weight:800;
+  font-size:15px;
+  color:#0f1724;
+}
+
+.trendMeta {
+  font-size:13px;
+  color:rgba(2,6,23,0.6);
+}
+
+.trendFooter {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+
+.trendBudget {
+  font-weight:800;
+  color:#0f1724;
+}
+
+.trendBtn {
+  padding:8px 10px;
+  border-radius:999px;
+  border:none;
+  background:linear-gradient(90deg,#7c3aed,#ff7a59);
+  color:white;
+  font-weight:700;
+  cursor:pointer;
+}
+
+/* reviews and other cards remain scrollable horizontally */
+.review { min-width:220px; border-radius:10px; padding:10px; background:linear-gradient(180deg,#fff,#fbfaff); box-shadow:0 6px 18px rgba(2,6,23,0.04); }
 
 /* results */
 .results{margin-bottom:18px}
@@ -832,15 +937,77 @@ body,html,#__next{margin:0;padding:0;background:radial-gradient(1200px 400px at 
 .alerts{margin-top:18px}
 .alertCard{padding:10px;border-radius:10px;background:linear-gradient(90deg,#fff,#fafafa)}
 
+/* small structures */
+.nudgeRow{display:flex;gap:8px;align-items:flex-start;margin-bottom:6px}
+.nudgeIcon{width:36px;height:36px;border-radius:10px;background:linear-gradient(90deg,#eef2ff,#fff);display:flex;align-items:center;justify-content:center;font-size:18px}
+.nudgeContent{flex:1}
+.nudgeTitle{font-weight:700}
+.nudgeDetail{font-size:13px;color:rgba(2,6,23,0.65)}
+
 /* highlight */
-.panchi-highlight{box-shadow:0 20px 60px rgba(124,58,237,0.12);transform:translateY(-6px);transition:all 0.28s ease}
+.panchi-highlight{box-shadow:0 24px 60px rgba(124,58,237,0.12);transform:translateY(-6px);transition:all 0.28s ease}
 
 /* responsive */
 @media(max-width:880px){
   .grid{grid-template-columns:1fr}
-  .timelineRow{gap:8px}
-  .dayPill{min-width:86px}
+  .trendingGrid{grid-template-columns:1fr}
+  .nudgesSidebar{max-height:none}
 }
 `;
 
-/* End of file */
+/* ----------------------
+   Simple internal mocks (fallbacks)
+---------------------- */
+function simpleMockNudges() {
+  return [
+    { id: "n1", type: "weather", title: "Rain alert in Goa this weekend", detail: "Light rain expected on Saturday evening around Baga-Calangute stretch.", icon: "☔" },
+    { id: "n2", type: "pricing", title: "Flight surge likely for Goa next Friday", detail: "Searches spike for DEL → GOI, book early to save.", icon: "🔥" },
+    { id: "n3", type: "traffic", title: "High traffic near Delhi airport (T3) evening", detail: "Expect delays 6-9 PM", icon: "🚦" },
+  ];
+}
+function simpleMockEvents() {
+  const dt = new Date();
+  const later = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + 12);
+  const laterStr = later.toISOString().slice(0, 10);
+  return [
+    { id: "e1", title: "Sunburn-esque EDM Festival", location: "Vagator, Goa", date: laterStr, severity: "high", impact: "High crowding - Hotels +30% - Cab surge likely", recommendedAction: "Book hotels + cabs now if attending; avoid beachfront stays if you want quiet.", },
+    { id: "e2", title: "Classical Music Fest", location: "Thiruvananthapuram", date: "2025-11-09", severity: "medium", impact: "Moderate; boutique hotels fill fast", recommendedAction: "Book boutique stays early; avoid late-night cab dependence." },
+    { id: "e3", title: "Grand Durga Visarjan (sample)", location: "Kolkata", date: "2025-10-08", severity: "high", impact: "Large crowds; road diversions", recommendedAction: "Avoid travel through processions; use metro where possible." }
+  ];
+}
+function simpleMockHotPlaces() {
+  return [
+    { id: "h1", title: "Goa", subtitle: "Beaches & nightlife", reason: "Peak weekend demand + music festivals", budget: "3000-8000", tag: "Beach", image: "/placeholder-trip.jpg" },
+    { id: "h2", title: "Manali", subtitle: "Hills & treks", reason: "Perfect weather window", budget: "2000-6000", tag: "Hills", image: "/placeholder-trip.jpg" },
+    { id: "h3", title: "Jaipur", subtitle: "Heritage & forts", reason: "Cultural tours trending", budget: "1500-5000", tag: "Culture", image: "/placeholder-trip.jpg" },
+    { id: "h4", title: "Udaipur", subtitle: "Palaces & lake stays", reason: "Romantic getaways", budget: "3000-9000", tag: "Luxury", image: "/placeholder-trip.jpg" },
+  ];
+}
+function simpleMockReviews() {
+  return [
+    { id: "r1", name: "Asha", rating: 4.6, location: "Goa", review: "Loved Baga early morning, avoid late-night crowds on Sundays.", tip: "Book local boat early", emoji: "🏖️" },
+    { id: "r2", name: "Rajan", rating: 4.2, location: "Manali", review: "Roads good in October, check for landslip alerts during monsoon.", tip: "Carry warm layers", emoji: "❄️" },
+  ];
+}
+function simpleMockFlights(dest) {
+  return [
+    { id: "f1", depart: "DEL 06:00", arrive: `${dest} 08:05`, duration: "2h 5m", price: 3500 },
+    { id: "f2", depart: "DEL 09:00", arrive: `${dest} 11:05`, duration: "2h 5m", price: 4200 },
+  ];
+}
+function simpleMockTrains(dest) {
+  return [
+    { id: "t1", depart: "DEL 18:20", arrive: `${dest} 09:15`, duration: "14h 55m", price: 1100, class: "SL/3A" },
+    { id: "t2", depart: "DEL 13:20", arrive: `${dest} 03:40`, duration: "14h 20m", price: 1350, class: "2S/CC" },
+  ];
+}
+function simpleMockBuses(dest) {
+  return [
+    { id: "b1", depart: "DEL 21:00", arrive: `${dest} 09:00`, duration: "12h 0m", price: 900 },
+  ];
+}
+function simpleMockCabs(dest) {
+  return [
+    { id: "c1", depart: "Airport", arrive: `${dest} City`, duration: "30m", price: 650, eta: "12 min" },
+  ];
+}
