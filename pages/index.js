@@ -4,10 +4,18 @@ export default function Home() {
   const [storedName, setStoredName] = useState("");
   const [nameInput, setNameInput] = useState("");
   const [destinationText, setDestinationText] = useState("");
+
+  // NUDGES
   const [nudges, setNudges] = useState([]);
   const [nudgesLoading, setNudgesLoading] = useState(false);
   const [nudgesError, setNudgesError] = useState("");
 
+  // HOT PLACES
+  const [hotPlaces, setHotPlaces] = useState([]);
+  const [hotLoading, setHotLoading] = useState(false);
+  const [hotError, setHotError] = useState("");
+
+  // NAME LOAD
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved = window.localStorage.getItem("panchiName");
@@ -17,47 +25,59 @@ export default function Home() {
     }
   }, []);
 
+  // LOAD NUDGES + HOT PLACES
   useEffect(() => {
     loadNudges();
+    loadHotPlaces();
   }, []);
 
+  // ----- FETCH NUDGES API -----
   async function loadNudges() {
     try {
       setNudgesLoading(true);
-      setNudgesError("");
       const res = await fetch("/api/mockNudges");
-      if (!res.ok) throw new Error("Failed to load nudges");
+      if (!res.ok) throw new Error("Failed nudges");
       const data = await res.json();
       setNudges(data);
     } catch (err) {
-      console.error(err);
-      setNudgesError("Could not load nudges right now.");
+      setNudgesError("Could not load nudges.");
     } finally {
       setNudgesLoading(false);
     }
   }
 
+  // ----- FETCH HOT PLACES API -----
+  async function loadHotPlaces() {
+    try {
+      setHotLoading(true);
+      const res = await fetch("/api/mockHotPlaces");
+      if (!res.ok) throw new Error("Failed hot places");
+      const data = await res.json();
+      setHotPlaces(data);
+    } catch (err) {
+      setHotError("Hot places unavailable right now.");
+    } finally {
+      setHotLoading(false);
+    }
+  }
+
+  // SAVE NAME
   function handleSaveName(e) {
     e.preventDefault();
     const trimmed = nameInput.trim();
     if (!trimmed) return;
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("panchiName", trimmed);
-    }
+    window.localStorage.setItem("panchiName", trimmed);
     setStoredName(trimmed);
   }
 
+  // FREE TEXT → AI PLANNER
   function handleFreeTextSearch(e) {
     e.preventDefault();
-    const text = destinationText.toLowerCase();
-    console.log("User asked for:", text);
-    // For now, show the AI-style all-modes decision screen.
     window.location.href = "/all-modes";
   }
 
-  function goToSearch(origin, dest) {
-    const params = new URLSearchParams({ origin, destination: dest }).toString();
-    window.location.href = `/search?${params}`;
+  function goToSearch(o, d) {
+    window.location.href = `/search?origin=${o}&destination=${d}`;
   }
 
   const greeting = storedName ? `Hey, ${storedName}` : "Hey,";
@@ -91,52 +111,45 @@ export default function Home() {
             marginBottom: "20px",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <img
-              src="/panchi-logo.png"
-              alt="Panchi Logo"
-              style={{ height: "70px", width: "auto" }}
-            />
-          </div>
+          <img
+            src="/panchi-logo.png"
+            alt="Panchi Logo"
+            style={{ height: "70px" }}
+          />
           <div style={{ fontSize: "14px", opacity: 0.7 }}>
             Cheapest trips · MVP
           </div>
         </header>
 
-        {/* HERO CARD */}
+        {/* HERO */}
         <section
           style={{
             borderRadius: "20px",
             padding: "20px 16px",
             background:
-              "linear-gradient(135deg, #1E90FF 0%, #FF6F61 50%, #FFB347 100%)",
+              "linear-gradient(135deg,#1E90FF 0%,#FF6F61 50%,#FFB347 100%)",
             color: "#fff",
             marginBottom: "24px",
           }}
         >
-          <div style={{ fontSize: "18px", marginBottom: "4px" }}>
-            {greeting}
-          </div>
+          <div style={{ fontSize: "18px" }}>{greeting}</div>
           <h1 style={{ fontSize: "26px", marginBottom: "6px" }}>
             Where are we going next?
           </h1>
-          <p style={{ fontSize: "14px", opacity: 0.9 }}>
-            Panchi will find the smartest and cheapest ways to reach your
-            destination — starting with this MVP that compares flights, trains,
-            buses and cabs for you automatically.
+          <p style={{ fontSize: "14px" }}>
+            Panchi finds the smartest and cheapest ways to reach your destination.
           </p>
         </section>
 
-        {/* NAME INPUT (only if name not saved) */}
+        {/* NAME INPUT */}
         {!storedName && (
           <form
             onSubmit={handleSaveName}
             style={{
               marginBottom: "20px",
               display: "flex",
+              gap: 10,
               flexWrap: "wrap",
-              gap: "10px",
-              alignItems: "center",
             }}
           >
             <input
@@ -144,24 +157,22 @@ export default function Home() {
               onChange={(e) => setNameInput(e.target.value)}
               placeholder="Your name"
               style={{
+                flex: 1,
                 padding: "10px 12px",
-                borderRadius: "14px",
+                borderRadius: 14,
                 border: "1px solid rgba(0,0,0,0.14)",
-                fontSize: "14px",
-                flex: "1",
               }}
             />
             <button
               type="submit"
               style={{
                 padding: "10px 14px",
-                borderRadius: "18px",
+                borderRadius: 18,
                 border: "none",
                 background:
                   "linear-gradient(135deg,#1E90FF 0%,#FF6F61 60%,#FFB347 100%)",
                 color: "#fff",
                 fontWeight: 600,
-                cursor: "pointer",
               }}
             >
               Save
@@ -169,260 +180,177 @@ export default function Home() {
           </form>
         )}
 
-        {/* FREE TEXT SEARCH */}
-        <section style={{ marginBottom: "20px" }}>
-          <h2 style={{ fontSize: "18px", marginBottom: "8px" }}>
-            Tell me a place or a vibe
-          </h2>
-          <p style={{ fontSize: "14px", opacity: 0.8, marginBottom: "8px" }}>
-            Try “Goa”, “Manali”, “Jaipur” or “beach under 5k”.
-          </p>
-
-          <form
-            onSubmit={handleFreeTextSearch}
+        {/* FREE TEXT BOX */}
+        <form
+          onSubmit={handleFreeTextSearch}
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 10,
+            marginBottom: 22,
+          }}
+        >
+          <input
+            value={destinationText}
+            onChange={(e) => setDestinationText(e.target.value)}
+            placeholder="Goa, Manali, beach trip under 5k..."
             style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "10px",
-              alignItems: "center",
+              flex: "1 1 240px",
+              padding: "12px 12px",
+              borderRadius: 16,
+              border: "1px solid rgba(30,144,255,0.4)",
+            }}
+          />
+          <button
+            type="submit"
+            style={{
+              padding: "12px 18px",
+              borderRadius: 20,
+              border: "none",
+              background:
+                "linear-gradient(135deg,#1E90FF 0%,#FF6F61 50%,#FFB347 100%)",
+              color: "#fff",
+              fontWeight: 600,
             }}
           >
-            <input
-              value={destinationText}
-              onChange={(e) => setDestinationText(e.target.value)}
-              placeholder="Where to? (city, hill station, beach...)"
-              style={{
-                flex: "1 1 240px",
-                padding: "12px 12px",
-                borderRadius: "16px",
-                border: "1px solid rgba(30,144,255,0.4)",
-                fontSize: "14px",
-              }}
-            />
-
-            <button
-              type="submit"
-              style={{
-                padding: "12px 18px",
-                borderRadius: "20px",
-                border: "none",
-                background:
-                  "linear-gradient(135deg,#1E90FF 0%,#FF6F61 50%,#FFB347 100%)",
-                color: "#fff",
-                fontWeight: 600,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Let Panchi plan →
-            </button>
-          </form>
-        </section>
+            Let Panchi plan →
+          </button>
+        </form>
 
         {/* QUICK SUGGESTIONS */}
-        <section style={{ marginBottom: "22px" }}>
-          <h3 style={{ fontSize: "16px", marginBottom: "8px" }}>
-            Or pick a quick idea
-          </h3>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "10px",
-              marginBottom: "10px",
-            }}
-          >
+        <section style={{ marginBottom: 22 }}>
+          <h3>Quick ideas</h3>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button style={chip} onClick={() => goToSearch("DEL", "GOI")}>
-              Goa for the weekend 🏖️
+              Goa weekend 🏖️
             </button>
-            <button style={chip}>Manali escape ❄️ (coming soon)</button>
-            <button style={chip}>Jaipur & forts 🏰 (coming soon)</button>
+            <button style={chip}>Manali cold ❄️ (soon)</button>
+            <button style={chip}>Jaipur forts 🏰 (soon)</button>
           </div>
 
-          <p style={{ fontSize: "13px", opacity: 0.75 }}>
-            For now we start from Delhi and show how Panchi will compare every
-            mode on one screen. Live APIs and AI itineraries are the next step.
+          <p style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
+            Live APIs coming soon.
           </p>
         </section>
 
         {/* SMART NUDGES */}
-        <section style={{ marginBottom: 22 }}>
-          <h3 style={{ fontSize: 16, marginBottom: 8 }}>
-            Smart nudges for this week (sample)
-          </h3>
+        <section style={{ marginBottom: 26 }}>
+          <h3>Smart nudges for this week</h3>
 
-          {nudgesLoading && (
-            <p style={{ fontSize: 13, opacity: 0.75 }}>Loading nudges…</p>
-          )}
-
-          {nudgesError && (
-            <p
-              style={{
-                fontSize: 13,
-                color: "#B00020",
-                background: "#FFF4F4",
-                padding: "8px 10px",
-                borderRadius: 12,
-                marginBottom: 8,
-              }}
-            >
-              {nudgesError}
-            </p>
-          )}
+          {nudgesLoading && <p>Loading nudges…</p>}
+          {nudgesError && <p>{nudgesError}</p>}
 
           {!nudgesLoading && nudges.length > 0 && (
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                gap: 10,
+                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+                gap: 12,
               }}
             >
-              {nudges.map((nudge) => (
+              {nudges.map((item) => (
                 <div
-                  key={nudge.id}
+                  key={item.id}
                   style={{
+                    padding: "12px",
                     borderRadius: 16,
-                    padding: "10px 12px",
-                    background: "rgba(30,144,255,0.04)",
-                    border: "1px solid rgba(0,0,0,0.06)",
+                    background: "rgba(30,144,255,0.06)",
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      marginBottom: 4,
-                    }}
-                  >
-                    <span style={{ fontSize: 18 }}>{nudge.icon}</span>
-                    <span
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 600,
-                      }}
-                    >
-                      {nudge.title}
-                    </span>
+                  <div style={{ fontWeight: 600 }}>
+                    {item.icon} {item.title}
+                  </div>
+                  <div style={{ fontSize: 12, opacity: 0.8 }}>
+                    {item.detail}
                   </div>
                   <div
                     style={{
-                      fontSize: 12,
-                      opacity: 0.8,
-                      marginBottom: 4,
-                    }}
-                  >
-                    {nudge.detail}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      opacity: 0.9,
+                      marginTop: 6,
+                      background: "rgba(255,111,97,0.08)",
                       padding: "6px 8px",
                       borderRadius: 999,
-                      background: "rgba(255,111,97,0.08)",
+                      fontSize: 11,
                     }}
                   >
-                    {nudge.impact}
+                    {item.impact}
                   </div>
                 </div>
               ))}
             </div>
           )}
-
-          <p
-            style={{
-              fontSize: 11,
-              opacity: 0.7,
-              marginTop: 6,
-            }}
-          >
-            In the full version, these nudges will be powered by live weather,
-            traffic, surge pricing and event data personalised to your trip.
-          </p>
         </section>
 
-        {/* EXPLORE BY MODE – stitches all pages */}
-        <section style={{ marginBottom: 18 }}>
-          <h3 style={{ fontSize: "16px", marginBottom: "10px" }}>
-            Explore by mode (MVP screens)
-          </h3>
+        {/* HOT PLACES SECTION */}
+        <section style={{ marginBottom: 28 }}>
+          <h3>🔥 Hot places in India right now</h3>
 
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "10px",
-            }}
-          >
-            <a href="/search" style={{ textDecoration: "none" }}>
-              <button style={modePillPrimary}>Flights</button>
-            </a>
+          {hotLoading && <p>Loading places…</p>}
+          {hotError && <p>{hotError}</p>}
 
-            <a href="/trains" style={{ textDecoration: "none" }}>
-              <button style={modePill}>Trains</button>
-            </a>
+          {!hotLoading && hotPlaces.length > 0 && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+                gap: 14,
+              }}
+            >
+              {hotPlaces.map((p) => (
+                <div
+                  key={p.id}
+                  style={{
+                    padding: "14px",
+                    borderRadius: 18,
+                    background:
+                      "linear-gradient(135deg,#1E90FF 0%,#FFB347 80%)",
+                    color: "#fff",
+                    boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+                  }}
+                >
+                  <div style={{ fontSize: 22 }}>{p.emoji}</div>
+                  <div style={{ fontSize: 17, fontWeight: 700 }}>
+                    {p.title}
+                  </div>
+                  <div style={{ fontSize: 13, opacity: 0.9 }}>{p.reason}</div>
 
-            <a href="/buses" style={{ textDecoration: "none" }}>
-              <button style={modePill}>Buses</button>
-            </a>
+                  <div
+                    style={{
+                      marginTop: 6,
+                      background: "rgba(255,255,255,0.18)",
+                      padding: "6px 10px",
+                      borderRadius: 999,
+                      fontSize: 12,
+                    }}
+                  >
+                    {p.temp} · {p.trend}
+                  </div>
 
-            <a href="/cabs" style={{ textDecoration: "none" }}>
-              <button style={modePill}>Cabs</button>
-            </a>
-
-            <a href="/all-modes" style={{ textDecoration: "none" }}>
-              <button style={modePillOutline}>All modes view</button>
-            </a>
-          </div>
-
-          <p style={{ fontSize: "12px", opacity: 0.7, marginTop: "8px" }}>
-            These are working MVP screens with mock data for Delhi → Goa, to
-            show how Panchi will compare every option on one platform.
-          </p>
-        </section>
-
-        {/* JOIN WAITLIST CTA */}
-        <section
-          style={{
-            marginTop: 4,
-            paddingTop: 10,
-            borderTop: "1px solid rgba(0,0,0,0.06)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 10,
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div style={{ fontSize: 13, opacity: 0.8, maxWidth: 420 }}>
-              Want to try the full AI travel companion when it’s ready?
-              Join the early access list and we’ll share the next builds with you
-              and selected investors.
+                  <div
+                    style={{
+                      marginTop: 6,
+                      fontSize: 13,
+                      background: "rgba(255,255,255,0.15)",
+                      padding: "6px 10px",
+                      borderRadius: 999,
+                    }}
+                  >
+                    Budget: {p.budget}
+                  </div>
+                </div>
+              ))}
             </div>
-            <a href="/waitlist" style={{ textDecoration: "none" }}>
-              <button
-                style={{
-                  padding: "9px 18px",
-                  borderRadius: 999,
-                  border: "none",
-                  cursor: "pointer",
-                  background:
-                    "linear-gradient(135deg,#1E90FF 0%,#FF6F61 50%,#FFB347 100%)",
-                  color: "#fff",
-                  fontWeight: 600,
-                  fontSize: 13,
-                  boxShadow: "0 10px 20px rgba(0,0,0,0.16)",
-                }}
-              >
-                Join waitlist
-              </button>
-            </a>
+          )}
+        </section>
+
+        {/* EXPLORE BY MODE */}
+        <section>
+          <h3>Explore by mode (MVP)</h3>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <a href="/search"><button style={modePillPrimary}>Flights</button></a>
+            <a href="/trains"><button style={modePill}>Trains</button></a>
+            <a href="/buses"><button style={modePill}>Buses</button></a>
+            <a href="/cabs"><button style={modePill}>Cabs</button></a>
+            <a href="/all-modes"><button style={modePillOutline}>All modes</button></a>
           </div>
         </section>
       </div>
@@ -430,22 +358,20 @@ export default function Home() {
   );
 }
 
+// STYLES
 const chip = {
-  padding: "8px 14px",
-  borderRadius: "20px",
-  border: "none",
-  fontSize: "13px",
-  cursor: "pointer",
+  padding: "8px 12px",
+  borderRadius: 20,
   background: "rgba(30,144,255,0.08)",
-  color: "#222",
+  border: "none",
+  cursor: "pointer",
 };
 
 const modePillBase = {
-  padding: "9px 16px",
-  borderRadius: "999px",
-  border: "none",
-  fontSize: "13px",
+  padding: "10px 16px",
+  borderRadius: 999,
   fontWeight: 600,
+  border: "none",
   cursor: "pointer",
 };
 
@@ -454,18 +380,16 @@ const modePillPrimary = {
   background:
     "linear-gradient(135deg,#1E90FF 0%,#FF6F61 50%,#FFB347 100%)",
   color: "#fff",
-  boxShadow: "0 10px 20px rgba(0,0,0,0.12)",
 };
 
 const modePill = {
   ...modePillBase,
   background: "rgba(30,144,255,0.06)",
-  color: "#222",
 };
 
 const modePillOutline = {
   ...modePillBase,
   background: "transparent",
-  border: "1px solid rgba(30,144,255,0.4)",
   color: "#1E90FF",
+  border: "1px solid rgba(30,144,255,0.4)",
 };
