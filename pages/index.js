@@ -1,587 +1,257 @@
-import { useState, useEffect } from "react";
+// pages/index.js
+import React, { useState, useMemo } from "react";
+import { useRouter } from "next/router";
+import Header from "./components/Header"; // path for your Header placed under pages/components/Header.js
 
 export default function Home() {
-  const [storedName, setStoredName] = useState("");
-  const [nameInput, setNameInput] = useState("");
-  const [destinationText, setDestinationText] = useState("");
-
-  // NUDGES
-  const [nudges, setNudges] = useState([]);
-  const [nudgesLoading, setNudgesLoading] = useState(false);
-  const [nudgesError, setNudgesError] = useState("");
-
-  // HOT PLACES
-  const [hotPlaces, setHotPlaces] = useState([]);
-  const [hotLoading, setHotLoading] = useState(false);
-  const [hotError, setHotError] = useState("");
-
-  // EVENTS
-  const [events, setEvents] = useState([]);
-  const [eventsLoading, setEventsLoading] = useState(false);
-  const [eventsError, setEventsError] = useState("");
-
-  // COMMUNITY REVIEWS
-  const [reviews, setReviews] = useState([]);
-  const [reviewsLoading, setReviewsLoading] = useState(false);
-  const [reviewsError, setReviewsError] = useState("");
-
-  // NAME LOAD
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = window.localStorage.getItem("panchiName");
-    if (saved) {
-      setStoredName(saved);
-      setNameInput(saved);
+  const router = useRouter();
+  const [mode, setMode] = useState("flights"); // flights | trains | cabs
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const dates = useMemo(() => {
+    // 7-day quick chips
+    const d = [];
+    for (let i = 0; i < 7; i++) {
+      const dt = new Date();
+      dt.setDate(dt.getDate() + i);
+      d.push(dt);
     }
+    return d;
   }, []);
 
-  // LOAD DATA
-  useEffect(() => {
-    loadNudges();
-    loadHotPlaces();
-    loadEvents();
-    loadReviews();
-  }, []);
+  const mockFlights = [
+    { id: "f1", name: "IndiAir", depart: "DEL 06:00", arrive: "Goa 08:05", duration: "2h 5m", price: 3499 },
+    { id: "f2", name: "SkyWays", depart: "DEL 09:00", arrive: "Goa 11:05", duration: "2h 5m", price: 4299 },
+    { id: "f3", name: "BudgetAir", depart: "DEL 17:15", arrive: "Goa 19:20", duration: "2h 5m", price: 2999 },
+  ];
 
-  // ----- FETCH NUDGES API -----
-  async function loadNudges() {
-    try {
-      setNudgesLoading(true);
-      setNudgesError("");
-      const res = await fetch("/api/mockNudges");
-      if (!res.ok) throw new Error("Failed to load nudges");
-      const data = await res.json();
-      setNudges(data);
-    } catch (err) {
-      console.error(err);
-      setNudgesError("Could not load nudges.");
-    } finally {
-      setNudgesLoading(false);
+  const nudges = [
+    { id: 1, title: "Rain alert — Baga / Calangute", body: "Light rain Saturday evening; prefer inland stays for a quiet morning." },
+    { id: 2, title: "Price surge likely next Fri", body: "Searches up for DEL → GOI. Book early to save ~10–18%." },
+    { id: 3, title: "Traffic at Delhi T3 (Evening)", body: "Allow 30–45 mins extra to reach the airport." },
+  ];
+
+  const community = [
+    { id: 1, name: "Asha", text: "Loved morning at Baga, crowd manageable." },
+    { id: 2, name: "Rajan", text: "Roads good during monsoon but choose inland stays." },
+  ];
+
+  function handlePlan(query) {
+    if (!query || !query.trim()) {
+      alert("Type a location and press Let Panchi plan");
+      return;
     }
+    // In MVP: navigate to plan page with destination param
+    router.push(`/plan?destination=${encodeURIComponent(query.trim())}`);
   }
-
-  // ----- FETCH HOT PLACES API -----
-  async function loadHotPlaces() {
-    try {
-      setHotLoading(true);
-      setHotError("");
-      const res = await fetch("/api/mockHotPlaces");
-      if (!res.ok) throw new Error("Failed hot places");
-      const data = await res.json();
-      setHotPlaces(data);
-    } catch (err) {
-      console.error(err);
-      setHotError("Hot places unavailable.");
-    } finally {
-      setHotLoading(false);
-    }
-  }
-
-  // ----- FETCH EVENTS API -----
-  async function loadEvents() {
-    try {
-      setEventsLoading(true);
-      setEventsError("");
-      const res = await fetch("/api/mockEvents");
-      if (!res.ok) throw new Error("Failed events");
-      const data = await res.json();
-      setEvents(data);
-    } catch (err) {
-      console.error(err);
-      setEventsError("Could not load events.");
-    } finally {
-      setEventsLoading(false);
-    }
-  }
-
-  // ----- FETCH COMMUNITY REVIEWS -----
-  async function loadReviews() {
-    try {
-      setReviewsLoading(true);
-      setReviewsError("");
-      const res = await fetch("/api/mockCommunity");
-      if (!res.ok) throw new Error("Failed reviews");
-      const data = await res.json();
-      setReviews(data);
-    } catch (err) {
-      console.error(err);
-      setReviewsError("Could not load community reviews.");
-    } finally {
-      setReviewsLoading(false);
-    }
-  }
-
-  // SAVE NAME
-  function handleSaveName(e) {
-    e.preventDefault();
-    const trimmed = nameInput.trim();
-    if (!trimmed) return;
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("panchiName", trimmed);
-    }
-    setStoredName(trimmed);
-  }
-
-  // FREE TEXT → AI PLANNER
-  function handleFreeTextSearch(e) {
-    e.preventDefault();
-    // For MVP we route to the AI-style decision screen
-    window.location.href = "/all-modes";
-  }
-
-  function goToSearch(o, d) {
-    window.location.href = `/search?origin=${o}&destination=${d}`;
-  }
-
-  const greeting = storedName ? `Hey, ${storedName}` : "Hey,";
 
   return (
-    <main
-      style={{
-        fontFamily: "Poppins, system-ui, sans-serif",
-        minHeight: "100vh",
-        padding: "24px",
-        background:
-          "linear-gradient(135deg, #1E90FF 0%, #FF6F61 50%, #32CD32 100%)",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "980px",
-          margin: "0 auto",
-          background: "rgba(255,255,255,0.94)",
-          borderRadius: "24px",
-          padding: "24px 20px 32px",
-          boxShadow: "0 18px 45px rgba(0,0,0,0.18)",
-        }}
-      >
-        {/* HEADER */}
-        <header
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "20px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <img src="/panchi-logo.png" alt="Panchi Logo" style={{ height: 70 }} />
-            <div style={{ fontSize: 13, opacity: 0.7 }}>Context-aware travel · MVP</div>
-          </div>
+    <>
+      <Header userName="Ethen" onPlan={handlePlan} />
 
-          <div style={{ fontSize: 13, opacity: 0.75 }}>
-            <a href="/waitlist" style={{ color: "#1E90FF", textDecoration: "none" }}>
-              Join waitlist
-            </a>
-          </div>
-        </header>
+      <main className="main">
+        <div className="container">
+          <section className="left-col">
+            <div className="panel">
+              <div className="subhead-row">
+                <h2>Find the best options for Goa</h2>
+                <div className="mode-tag">Mode: <strong>{mode}</strong></div>
+              </div>
 
-        {/* HERO */}
-        <section
-          style={{
-            borderRadius: "20px",
-            padding: "20px 16px",
-            background:
-              "linear-gradient(135deg,#1E90FF 0%,#FF6F61 50%,#FFB347 100%)",
-            color: "#fff",
-            marginBottom: "22px",
-          }}
-        >
-          <div style={{ fontSize: "18px", marginBottom: 4 }}>{greeting}</div>
-          <h1 style={{ fontSize: 26, marginBottom: 6 }}>Where are we going next?</h1>
-          <p style={{ fontSize: 14 }}>
-            Panchi watches weather, events, prices and traffic so you don't have to.
-          </p>
-        </section>
+              <p className="lead">Panchi synthesizes price, events, weather, and community feedback to nudge you in realtime.</p>
 
-        {/* NAME INPUT */}
-        {!storedName && (
-          <form
-            onSubmit={handleSaveName}
-            style={{
-              marginBottom: "18px",
-              display: "flex",
-              gap: 10,
-              flexWrap: "wrap",
-            }}
-          >
-            <input
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              placeholder="Your name"
-              style={{
-                flex: 1,
-                padding: "10px 12px",
-                borderRadius: 14,
-                border: "1px solid rgba(0,0,0,0.14)",
-              }}
-            />
-            <button
-              type="submit"
-              style={{
-                padding: "10px 14px",
-                borderRadius: 18,
-                border: "none",
-                background:
-                  "linear-gradient(135deg,#1E90FF 0%,#FF6F61 60%,#FFB347 100%)",
-                color: "#fff",
-                fontWeight: 600,
-              }}
-            >
-              Save
-            </button>
-          </form>
-        )}
-
-        {/* FREE TEXT BOX */}
-        <form
-          onSubmit={handleFreeTextSearch}
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 10,
-            marginBottom: 20,
-          }}
-        >
-          <input
-            value={destinationText}
-            onChange={(e) => setDestinationText(e.target.value)}
-            placeholder="Goa, Manali, beach trip under 5k..."
-            style={{
-              flex: "1 1 320px",
-              padding: "12px 12px",
-              borderRadius: 16,
-              border: "1px solid rgba(30,144,255,0.4)",
-            }}
-          />
-          <button
-            type="submit"
-            style={{
-              padding: "12px 18px",
-              borderRadius: 20,
-              border: "none",
-              background:
-                "linear-gradient(135deg,#1E90FF 0%,#FF6F61 50%,#FFB347 100%)",
-              color: "#fff",
-              fontWeight: 600,
-            }}
-          >
-            Let Panchi plan →
-          </button>
-        </form>
-
-        {/* QUICK SUGGESTIONS */}
-        <section style={{ marginBottom: 22 }}>
-          <h3 style={{ marginBottom: 10 }}>Quick ideas</h3>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button style={chip} onClick={() => goToSearch("DEL", "GOI")}>
-              Goa weekend 🏖️
-            </button>
-            <button style={chip}>Manali cold ❄️ (soon)</button>
-            <button style={chip}>Jaipur forts 🏰 (soon)</button>
-          </div>
-        </section>
-
-        {/* SMART NUDGES */}
-        <section style={{ marginBottom: 22 }}>
-          <h3 style={{ marginBottom: 10 }}>Smart nudges for this week</h3>
-          {nudgesLoading && <p style={{ fontSize: 13, opacity: 0.8 }}>Loading nudges…</p>}
-          {nudgesError && (
-            <p style={{ color: "#B00020", background: "#FFF4F4", padding: 8 }}>{nudgesError}</p>
-          )}
-
-          {!nudgesLoading && nudges.length > 0 && (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-                gap: 12,
-              }}
-            >
-              {nudges.map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    padding: "12px",
-                    borderRadius: 16,
-                    background: "rgba(30,144,255,0.06)",
-                    minHeight: 96,
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <div style={{ fontSize: 18 }}>{item.icon}</div>
-                    <div style={{ fontSize: 13, fontWeight: 700 }}>{item.title}</div>
-                  </div>
-                  <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 8 }}>{item.detail}</div>
-                  <div
-                    style={{
-                      marginTop: 6,
-                      background: "rgba(255,111,97,0.08)",
-                      padding: "6px 8px",
-                      borderRadius: 999,
-                      fontSize: 12,
-                    }}
+              <div className="date-chips">
+                {dates.map((d, idx) => (
+                  <button
+                    key={idx}
+                    className={`chip ${d.toDateString() === selectedDate.toDateString() ? "active" : ""}`}
+                    onClick={() => setSelectedDate(d)}
                   >
-                    {item.impact}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          <div style={{ fontSize: 11, opacity: 0.7, marginTop: 8 }}>
-            Real-time nudges will come from weather, traffic & event feeds.
-          </div>
-        </section>
+                    {d.toLocaleDateString(undefined, { month: "2-digit", day: "2-digit" })}
+                  </button>
+                ))}
+              </div>
 
-        {/* HOT PLACES */}
-        <section style={{ marginBottom: 26 }}>
-          <h3 style={{ marginBottom: 10 }}>🔥 Hot places in India right now</h3>
-          {hotLoading && <p>Loading places…</p>}
-          {hotError && <p>{hotError}</p>}
+              <div className="mode-tabs">
+                <button className={`tab ${mode === "flights" ? "active" : ""}`} onClick={() => setMode("flights")}>Flights</button>
+                <button className={`tab ${mode === "trains" ? "active" : ""}`} onClick={() => setMode("trains")}>Trains</button>
+                <button className={`tab ${mode === "cabs" ? "active" : ""}`} onClick={() => setMode("cabs")}>Cabs</button>
+              </div>
 
-          {!hotLoading && hotPlaces.length > 0 && (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-                gap: 14,
-              }}
-            >
-              {hotPlaces.map((p) => (
-                <div
-                  key={p.id}
-                  style={{
-                    padding: "14px",
-                    borderRadius: 18,
-                    background:
-                      "linear-gradient(135deg,#1E90FF 0%,#FFB347 80%)",
-                    color: "#fff",
-                    boxShadow: "0 10px 25px rgba(0,0,0,0.12)",
-                  }}
-                >
-                  <div style={{ fontSize: 28 }}>{p.emoji}</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, marginTop: 6 }}>{p.title}</div>
-                  <div style={{ fontSize: 13, opacity: 0.95, marginTop: 8 }}>{p.reason}</div>
-
-                  <div
-                    style={{
-                      marginTop: 8,
-                      background: "rgba(255,255,255,0.16)",
-                      padding: "6px 10px",
-                      borderRadius: 999,
-                      fontSize: 12,
-                    }}
-                  >
-                    {p.temp} · {p.trend}
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: 8,
-                      fontSize: 13,
-                      background: "rgba(255,255,255,0.12)",
-                      padding: "6px 10px",
-                      borderRadius: 999,
-                    }}
-                  >
-                    Budget: {p.budget}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* EVENTS */}
-        <section style={{ marginBottom: 26 }}>
-          <h3 style={{ marginBottom: 10 }}>📅 What’s happening — events & crowd alerts</h3>
-          {eventsLoading && <p>Loading events…</p>}
-          {eventsError && <p style={{ color: "#B00020", background: "#FFF4F4", padding: 8 }}>{eventsError}</p>}
-
-          {!eventsLoading && events.length > 0 && (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-                gap: 12,
-              }}
-            >
-              {events.map((ev) => (
-                <div
-                  key={ev.id}
-                  style={{
-                    padding: 14,
-                    borderRadius: 16,
-                    background: "#fff",
-                    border: "1px solid rgba(0,0,0,0.06)",
-                    boxShadow: "0 8px 20px rgba(0,0,0,0.06)",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                    <div>
-                      <div style={{ fontSize: 15, fontWeight: 700 }}>{ev.title}</div>
-                      <div style={{ fontSize: 13, opacity: 0.8 }}>{ev.location} · {ev.date}</div>
+              {/* Results list (mock) */}
+              <div className="results">
+                {mode === "flights" && mockFlights.map(f => (
+                  <article className="result-card" key={f.id}>
+                    <div className="result-left">
+                      <div className="result-title">{f.name}</div>
+                      <div className="result-sub">{f.depart} → {f.arrive} · {f.duration}</div>
                     </div>
-                    <div style={{
-                      fontSize: 12,
-                      padding: "6px 8px",
-                      borderRadius: 10,
-                      background: ev.severity === "high" ? "rgba(255,111,97,0.12)" : "rgba(30,144,255,0.08)",
-                      color: ev.severity === "high" ? "#B00020" : "#1E90FF",
-                      fontWeight: 700,
-                      whiteSpace: "nowrap"
-                    }}>
-                      {ev.severity.toUpperCase()}
+                    <div className="result-right">
+                      <div className="price">₹{f.price}</div>
+                      <button className="book">Book</button>
                     </div>
-                  </div>
+                  </article>
+                ))}
 
-                  <div style={{ marginTop: 8, fontSize: 13, opacity: 0.9 }}>{ev.detail}</div>
-
-                  <div style={{ marginTop: 10, display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ fontSize: 12, color: "#444" }}><strong>Impact:</strong> {ev.impact}</div>
-
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button style={smallBtnOutline}>Save alert</button>
-                      <button style={smallBtnPrimary}>More info</button>
+                {mode === "trains" && (
+                  <article className="result-card">
+                    <div className="result-left">
+                      <div className="result-title">Konkan Kanya Express · 10111</div>
+                      <div className="result-sub">18:20 → 09:15 · 14h 55m</div>
                     </div>
-                  </div>
+                    <div className="result-right">
+                      <div className="price">₹1100</div>
+                      <button className="book">Book</button>
+                    </div>
+                  </article>
+                )}
 
-                  <div style={{ marginTop: 8, fontSize: 12, opacity: 0.85 }}>
-                    Panchi suggestion: {ev.recommendedAction}
-                  </div>
-                </div>
-              ))}
+                {mode === "cabs" && (
+                  <article className="result-card">
+                    <div className="result-left">
+                      <div className="result-title">Local Taxi (Airport)</div>
+                      <div className="result-sub">ETA 10 min · Rating ★ 4.6</div>
+                    </div>
+                    <div className="result-right">
+                      <div className="price">₹220</div>
+                      <button className="book">Book</button>
+                    </div>
+                  </article>
+                )}
+              </div>
             </div>
-          )}
 
-          <div style={{ marginTop: 10, fontSize: 11, opacity: 0.75 }}>
-            Event data in the production app will come from ticketing & event APIs plus civic advisories.
-          </div>
-        </section>
-
-        {/* COMMUNITY REVIEWS */}
-        <section style={{ marginBottom: 26 }}>
-          <h3 style={{ marginBottom: 10 }}>💬 What travellers are saying</h3>
-
-          {reviewsLoading && <p>Loading community reviews…</p>}
-          {reviewsError && <p style={{ color: "#B00020" }}>{reviewsError}</p>}
-
-          {!reviewsLoading && reviews.length > 0 && (
-            <div
-              style={{
-                display: "flex",
-                gap: 12,
-                overflowX: "auto",
-                paddingBottom: 8,
-                marginTop: 6,
-              }}
-            >
-              {reviews.map((r) => (
-                <div
-                  key={r.id}
-                  style={{
-                    minWidth: 260,
-                    flex: "0 0 260px",
-                    background: "linear-gradient(135deg,#fff 0%,#F7FBFF 100%)",
-                    borderRadius: 16,
-                    padding: 12,
-                    boxShadow: "0 8px 20px rgba(0,0,0,0.06)",
-                    border: "1px solid rgba(0,0,0,0.04)",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 8,
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>{r.name}</div>
-                    <div style={{ fontSize: 13, opacity: 0.8 }}>{r.rating.toFixed(1)} ⭐</div>
-                  </div>
-
-                  <div style={{ fontSize: 13, opacity: 0.9 }}>{r.emoji} <strong>{r.location}</strong></div>
-
-                  <div style={{ fontSize: 13, color: "#333" }}>{r.review}</div>
-
-                  <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ fontSize: 12, opacity: 0.75 }}>{r.tip}</div>
-                    <button style={smallBtnOutline}>Report</button>
-                  </div>
-                </div>
-              ))}
+            <div className="panel events">
+              <h3>Events & crowd alerts</h3>
+              <ul className="alerts">
+                <li><strong>HIGH</strong> Sunburn-esque EDM Festival — Vagator, Goa · 2025-12-28 · Panchi: Book hotels + cabs now.</li>
+                <li><strong>HIGH</strong> IPL Playoffs (Sample) — Mumbai · 2026-05-20 · Panchi: plan longer arrival buffers.</li>
+                <li><strong>MEDIUM</strong> Classical Music Fest — Thiruvananthapuram · 2025-11-09.</li>
+                <li><strong>HIGH</strong> Grand Durga Visarjan — Kolkata · 2025-10-08 · Avoid processions; use metro.</li>
+              </ul>
             </div>
-          )}
+          </section>
 
-          <div style={{ marginTop: 8, fontSize: 11, opacity: 0.75 }}>
-            In the full app, reviews will be user-submitted, verified and geotagged. This is a preview of community-powered insights.
-          </div>
-        </section>
+          <aside className="right-col">
+            <div className="sticky">
+              <div className="nudges panel">
+                <h4>Nudges & alerts</h4>
+                {nudges.map(n => (
+                  <div key={n.id} className="nudge">
+                    <div className="nudge-title">{n.title}</div>
+                    <div className="nudge-body">{n.body}</div>
+                  </div>
+                ))}
+              </div>
 
-        {/* EXPLORE BY MODE */}
-        <section>
-          <h3 style={{ marginBottom: 8 }}>Explore by mode (MVP)</h3>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <a href="/search"><button style={modePillPrimary}>Flights</button></a>
-            <a href="/trains"><button style={modePill}>Trains</button></a>
-            <a href="/buses"><button style={modePill}>Buses</button></a>
-            <a href="/cabs"><button style={modePill}>Cabs</button></a>
-            <a href="/all-modes"><button style={modePillOutline}>All modes</button></a>
-          </div>
-        </section>
-      </div>
-    </main>
+              <div className="community panel">
+                <h4>Community quick takes</h4>
+                {community.map(c => (
+                  <div key={c.id} className="comm">
+                    <strong>{c.name}</strong> — <span>{c.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </div>
+      </main>
+
+      <style jsx>{`
+        .main {
+          padding: 20px;
+          background: linear-gradient(180deg, rgba(247,247,249,1), rgba(255,255,255,1));
+        }
+        .container {
+          max-width: 1180px;
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: 1fr 320px;
+          gap: 28px;
+        }
+        .left-col { }
+        .right-col { }
+
+        .panel {
+          background: #fff;
+          border-radius: 14px;
+          padding: 20px;
+          box-shadow: 0 10px 30px rgba(15,23,42,0.04);
+          margin-bottom: 20px;
+        }
+
+        .subhead-row {
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap: 16px;
+        }
+        .subhead-row h2 { margin: 0; font-size: 20px; }
+        .mode-tag { color:#374151; font-size: 14px; }
+
+        .lead { color:#6b7280; margin-top: 6px; }
+
+        .date-chips { margin: 12px 0; display:flex; gap:8px; flex-wrap:wrap; }
+        .chip {
+          background:#f3f4f6;
+          border-radius:10px;
+          padding:8px 12px;
+          border:1px solid transparent;
+          cursor:pointer;
+        }
+        .chip.active { background:#fff; border:1px solid #e6e9ef; box-shadow: 0 8px 20px rgba(15,23,42,0.04); }
+
+        .mode-tabs { display:flex; gap:10px; margin-bottom: 12px; }
+        .tab {
+          border-radius: 10px;
+          padding:8px 14px;
+          background: #f3f4f6;
+          border: 1px solid transparent;
+          cursor:pointer;
+        }
+        .tab.active { background: linear-gradient(90deg,#7a5cf4,#ff6fb1); color:#fff; font-weight:700; }
+
+        .results { margin-top:8px; display:flex; flex-direction:column; gap:12px; }
+
+        .result-card {
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          background:#f8fafc;
+          border-radius:10px;
+          padding:16px;
+          border: 1px solid #eef2f6;
+        }
+        .result-left { max-width: 70%; }
+        .result-title { font-weight:700; }
+        .result-sub { color:#6b7280; margin-top:6px; }
+
+        .result-right { text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+        .price { font-weight:800; font-size:18px; }
+        .book {
+          padding:8px 12px;
+          border-radius:8px;
+          background: white;
+          border: 1px solid #e6e9ef;
+          cursor:pointer;
+        }
+
+        .events .alerts { list-style: none; padding:0; margin:0; color:#374151; }
+        .events .alerts li { padding:8px 0; border-bottom: 1px dashed #eef2f6; }
+
+        .sticky { position: sticky; top: 22px; display:flex; flex-direction:column; gap:12px; }
+        .nudges .nudge { padding:10px 0; border-bottom:1px solid #f3f4f6; }
+        .nudge-title { font-weight:700; }
+        .nudge-body { color:#6b7280; }
+
+        .community .comm { padding:10px 0; border-bottom:1px dashed #f3f4f6; color:#374151; }
+
+        @media (max-width: 980px) {
+          .container { grid-template-columns: 1fr; }
+          .right-col { order: 2; }
+          .left-col { order: 1; }
+          .sticky { position: static; }
+        }
+      `}</style>
+    </>
   );
 }
-
-// STYLES
-const chip = {
-  padding: "8px 12px",
-  borderRadius: 20,
-  background: "rgba(30,144,255,0.08)",
-  border: "none",
-  cursor: "pointer",
-};
-
-const smallBtnPrimary = {
-  padding: "8px 10px",
-  borderRadius: 999,
-  border: "none",
-  background: "linear-gradient(135deg,#1E90FF 0%,#FF6F61 50%)",
-  color: "#fff",
-  cursor: "pointer",
-  fontSize: 13,
-};
-
-const smallBtnOutline = {
-  padding: "8px 10px",
-  borderRadius: 999,
-  border: "1px solid rgba(0,0,0,0.06)",
-  background: "transparent",
-  cursor: "pointer",
-  fontSize: 13,
-};
-
-const modePillBase = {
-  padding: "10px 16px",
-  borderRadius: 999,
-  fontWeight: 600,
-  border: "none",
-  cursor: "pointer",
-};
-
-const modePillPrimary = {
-  ...modePillBase,
-  background:
-    "linear-gradient(135deg,#1E90FF 0%,#FF6F61 50%,#FFB347 100%)",
-  color: "#fff",
-};
-
-const modePill = {
-  ...modePillBase,
-  background: "rgba(30,144,255,0.06)",
-};
-
-const modePillOutline = {
-  ...modePillBase,
-  background: "transparent",
-  color: "#1E90FF",
-  border: "1px solid rgba(30,144,255,0.4)",
-};
