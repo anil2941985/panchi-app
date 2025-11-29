@@ -4,6 +4,9 @@ export default function Home() {
   const [storedName, setStoredName] = useState("");
   const [nameInput, setNameInput] = useState("");
   const [destinationText, setDestinationText] = useState("");
+  const [nudges, setNudges] = useState([]);
+  const [nudgesLoading, setNudgesLoading] = useState(false);
+  const [nudgesError, setNudgesError] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -13,6 +16,26 @@ export default function Home() {
       setNameInput(saved);
     }
   }, []);
+
+  useEffect(() => {
+    loadNudges();
+  }, []);
+
+  async function loadNudges() {
+    try {
+      setNudgesLoading(true);
+      setNudgesError("");
+      const res = await fetch("/api/mockNudges");
+      if (!res.ok) throw new Error("Failed to load nudges");
+      const data = await res.json();
+      setNudges(data);
+    } catch (err) {
+      console.error(err);
+      setNudgesError("Could not load nudges right now.");
+    } finally {
+      setNudgesLoading(false);
+    }
+  }
 
   function handleSaveName(e) {
     e.preventDefault();
@@ -26,10 +49,9 @@ export default function Home() {
 
   function handleFreeTextSearch(e) {
     e.preventDefault();
-    // In future we’ll send this text to the AI planner.
-    // For now we ignore it and show the all-modes AI-style decision screen.
     const text = destinationText.toLowerCase();
     console.log("User asked for:", text);
+    // For now, show the AI-style all-modes decision screen.
     window.location.href = "/all-modes";
   }
 
@@ -223,7 +245,105 @@ export default function Home() {
           </p>
         </section>
 
-        {/* EXPLORE BY MODE – still there for manual demo */}
+        {/* SMART NUDGES */}
+        <section style={{ marginBottom: 22 }}>
+          <h3 style={{ fontSize: 16, marginBottom: 8 }}>
+            Smart nudges for this week (sample)
+          </h3>
+
+          {nudgesLoading && (
+            <p style={{ fontSize: 13, opacity: 0.75 }}>Loading nudges…</p>
+          )}
+
+          {nudgesError && (
+            <p
+              style={{
+                fontSize: 13,
+                color: "#B00020",
+                background: "#FFF4F4",
+                padding: "8px 10px",
+                borderRadius: 12,
+                marginBottom: 8,
+              }}
+            >
+              {nudgesError}
+            </p>
+          )}
+
+          {!nudgesLoading && nudges.length > 0 && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: 10,
+              }}
+            >
+              {nudges.map((nudge) => (
+                <div
+                  key={nudge.id}
+                  style={{
+                    borderRadius: 16,
+                    padding: "10px 12px",
+                    background: "rgba(30,144,255,0.04)",
+                    border: "1px solid rgba(0,0,0,0.06)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      marginBottom: 4,
+                    }}
+                  >
+                    <span style={{ fontSize: 18 }}>{nudge.icon}</span>
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {nudge.title}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      opacity: 0.8,
+                      marginBottom: 4,
+                    }}
+                  >
+                    {nudge.detail}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      opacity: 0.9,
+                      padding: "6px 8px",
+                      borderRadius: 999,
+                      background: "rgba(255,111,97,0.08)",
+                    }}
+                  >
+                    {nudge.impact}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p
+            style={{
+              fontSize: 11,
+              opacity: 0.7,
+              marginTop: 6,
+            }}
+          >
+            In the full version, these nudges will be powered by live weather,
+            traffic, surge pricing and event data personalised to your trip.
+          </p>
+        </section>
+
+        {/* EXPLORE BY MODE – stitches all pages */}
         <section style={{ marginBottom: 18 }}>
           <h3 style={{ fontSize: "16px", marginBottom: "10px" }}>
             Explore by mode (MVP screens)
