@@ -1,16 +1,21 @@
 // pages/all-modes.js
-
 import { useEffect, useState } from "react";
+import { evaluateEventImpact } from "../utils/eventImpact";
 
 export default function AllModes() {
   const [flight, setFlight] = useState(null);
   const [train, setTrain] = useState(null);
   const [bus, setBus] = useState(null);
   const [cab, setCab] = useState(null);
-  const [recommended, setRecommended] = useState(null);
-  const [reason, setReason] = useState("");
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const [recommended, setRecommended] = useState(null);
+  const [explanation, setExplanation] = useState("");
+
+  // sample destination used in evaluator; in real app this should come from user input
+  const destSample = "Goa";
 
   useEffect(() => {
     loadAll();
@@ -19,23 +24,27 @@ export default function AllModes() {
   async function loadAll() {
     setLoading(true);
     setError("");
+    setRecommended(null);
+    setExplanation("");
     try {
-      const [fRes, tRes, bRes, cRes] = await Promise.all([
+      const [fRes, tRes, bRes, cRes, evRes] = await Promise.all([
         fetch("/api/mockFlights"),
         fetch("/api/mockTrains"),
         fetch("/api/mockBuses"),
         fetch("/api/mockCabs"),
+        fetch("/api/mockEvents"),
       ]);
 
-      if (!fRes.ok || !tRes.ok || !bRes.ok || !cRes.ok) {
+      if (!fRes.ok || !tRes.ok || !bRes.ok || !cRes.ok || !evRes.ok) {
         throw new Error("One of the APIs failed");
       }
 
-      const [fData, tData, bData, cData] = await Promise.all([
+      const [fData, tData, bData, cData, evData] = await Promise.all([
         fRes.json(),
         tRes.json(),
         bRes.json(),
         cRes.json(),
+        evRes.json(),
       ]);
 
       const f = fData[0] || null;
@@ -47,52 +56,114 @@ export default function AllModes() {
       setTrain(t);
       setBus(b);
       setCab(c);
+      setEvents(evData || []);
 
-      // --- Simple “AI” decision logic for recommendation ---
+      // Build options list (only non-null)
       const options = [];
-      if (f) options.push({ type: "flight", label: "Flight", data: f });
-      if (t) options.push({ type: "train", label: "Train", data: t });
-      if (b) options.push({ type: "bus", label: "Bus", data: b });
+      if (f) options.push({ key: "flight", label: "Flight", data: f });
+      if (t) options.push({ key: "train", label: "Train", data: t });
+      if (b) options.push({ key: "bus", label: "Bus", data: b });
+      if (c) options.push({ key: "cab", label: "Cab", data: c });
 
-      if (options.length > 0) {
-        let flightOpt = options.find((o) => o.type === "flight") || null;
-        let trainOpt = options.find((o) => o.type === "train") || null;
-        let busOpt = options.find((o) => o.type === "bus") || null;
-
-        // Cheapest among non-cab options
-        let cheapest = options.reduce((min, o) =>
-          !min || o.data.price < min.data.price ? o : min
-        , null);
-
-        let rec = cheapest;
-        let why = "Absolute lowest price for this trip.";
-
-        if (flightOpt && trainOpt && busOpt) {
-          const fp = flightOpt.data.price;
-          const tp = trainOpt.data.price;
-          const bp = busOpt.data.price;
-          const minPrice = Math.min(fp, tp, bp);
-
-          if (fp <= minPrice + 800) {
-            rec = flightOpt;
-            why =
-              "Fastest way to travel and not much more expensive than the cheapest option.";
-          } else if (tp <= minPrice + 300) {
-            rec = trainOpt;
-            why =
-              "More comfortable than bus while staying very close to the cheapest price.";
-          } else {
-            rec = cheapest;
-            why = "Absolute lowest price for this route.";
-          }
-        }
-
-        setRecommended(rec);
-        setReason(why);
-      } else {
-        setRecommended(null);
-        setReason("");
+      // If no options, bail
+      if (options.length === 0) {
+        setExplanation("No transport options available right now.");
+        setLoading(false);
+        return;
       }
+
+      // Evaluate event impact for the chosen destination (simple match)
+      const { eventSummary, penalties } = evaluateEventImpact(evData || [], destSample);
+
+      // Score each option: normalized price + normalized duration + penalty
+      // lower score = better
+      const prices = options.map((o) => (o.data.price != null ? o.data.price : Infinity));
+      const durationsMin = options.map((o) => {
+        // parse duration like "2h 30m" -> minutes
+        const d = o.data.duration || "";
+        let total = 0;
+        const hMatch = d.match(/(\d+)\s*h/);
+        const mMatch = d.match(/(\d+)\s*m/);
+        if (hMatch) total += parseInt(hMatch[1], 10) * 60;
+        if (mMatch) total += parseInt(mMatch[1], 10);
+        // if duration missing, fallback to large value
+        if (total === 0) total = 24 * 60;
+        return total;
+      });
+
+      const minPrice = Math.min(...prices);
+      const maxPrice = Math.max(...prices);
+      const minDur = Math.min(...durationsMin);
+      const maxDur = Math.max(...durationsMin);
+
+      function norm(val, min, max) {
+        if (max === min) return 0; // all same -> neutral
+        return (val - min) / (max - min); // 0..1
+      }
+
+      const scored = options.map((o, i) => {
+        const price = prices[i];
+        const dur = durationsMin[i];
+
+        const priceScore = norm(price, minPrice, maxPrice) * 100; // 0..100
+        const durScore = norm(dur, minDur, maxDur) * 100; // 0..100
+
+        // weights: price 0.65, duration 0.35
+        const baseScore = priceScore * 0.65 + durScore * 0.35;
+
+        // penalty from events (0..)
+        const penaltyPoints = penalties && penalties[o.key] ? penalties[o.key] : 0;
+
+        // final score
+        const finalScore = baseScore + penaltyPoints;
+
+        return {
+          ...o,
+          price,
+          durationMinutes: dur,
+          priceScore,
+          durScore,
+          baseScore,
+          penaltyPoints,
+          finalScore,
+        };
+      });
+
+      // pick minimum finalScore
+      scored.sort((a, b) => a.finalScore - b.finalScore);
+      const best = scored[0];
+
+      // Create human-friendly explanation
+      let why = [];
+      why.push(`Panchi recommends the ${best.label} for Delhi → Goa sample route.`);
+
+      // Provide reason based on scores
+      why.push(
+        `Score snapshot — price: ₹${best.price} (score ${Math.round(best.priceScore)}), duration: ${best.durationMinutes} min (score ${Math.round(
+          best.durScore
+        )}), penalty: ${Math.round(best.penaltyPoints)}.`
+      );
+
+      if (eventSummary && eventSummary.length > 0) {
+        why.push("Event context:");
+        eventSummary.forEach((s) => {
+          why.push(`• ${s.title} — ${s.impact}. Panchi: ${s.recommendation}`);
+        });
+
+        // If chosen option had penalty > 0, mention avoidance
+        if (best.penaltyPoints > 0) {
+          why.push(
+            `Panchi reduced score for modes affected by events (penalty applied). ${best.label} remained best after adjustments.`
+          );
+        } else {
+          why.push(`${best.label} is least affected by the current events in ${destSample}.`);
+        }
+      } else {
+        why.push("No major events detected at the destination that impact travel.");
+      }
+
+      setRecommended(best);
+      setExplanation(why.join(" "));
     } catch (err) {
       console.error(err);
       setError("Could not load all modes right now. Please try again.");
@@ -101,11 +172,12 @@ export default function AllModes() {
     }
   }
 
-  function modeEmoji(type) {
-    if (type === "flight") return "✈️";
-    if (type === "train") return "🚆";
-    if (type === "bus") return "🚌";
-    return "✨";
+  function humanModeEmoji(key) {
+    if (key === "flight") return "✈️";
+    if (key === "train") return "🚆";
+    if (key === "bus") return "🚌";
+    if (key === "cab") return "🚕";
+    return "✳️";
   }
 
   return (
@@ -120,7 +192,7 @@ export default function AllModes() {
     >
       <div
         style={{
-          maxWidth: 900,
+          maxWidth: 960,
           margin: "0 auto",
           background: "rgba(255,255,255,0.95)",
           borderRadius: 24,
@@ -128,54 +200,33 @@ export default function AllModes() {
           boxShadow: "0 18px 45px rgba(0,0,0,0.18)",
         }}
       >
-        {/* HEADER */}
+        {/* Header */}
         <header
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: 24,
+            marginBottom: 20,
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-            }}
-          >
-            <a
-              href="/"
-              style={{
-                textDecoration: "none",
-                fontSize: "20px",
-                color: "#1E90FF",
-                fontWeight: 600,
-                lineHeight: 1,
-              }}
-            >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <a href="/" style={{ textDecoration: "none", fontSize: 20, color: "#1E90FF" }}>
               ◀︎
             </a>
-            <img
-              src="/panchi-logo.png"
-              alt="Panchi Logo"
-              style={{ height: "46px", width: "auto" }}
-            />
+            <img src="/panchi-logo.png" alt="Panchi" style={{ height: 46 }} />
           </div>
-
-          <div style={{ fontSize: 14, opacity: 0.7 }}>All modes · MVP</div>
+          <div style={{ fontSize: 14, opacity: 0.8 }}>All modes · AI-aware MVP</div>
         </header>
 
         <h1 style={{ fontSize: 22, marginBottom: 8 }}>
-          Best way to go Delhi → Goa (sample route)
+          Panchi’s recommendation — Delhi → Goa (sample)
         </h1>
-        <p style={{ fontSize: 14, opacity: 0.8, marginBottom: 16 }}>
-          This MVP compares the cheapest flight, train, bus and cab for a sample
-          Delhi → Goa trip. In the full version, Panchi&apos;s AI will do this
-          for any route, live — with real prices, delays and safety nudges.
+        <p style={{ fontSize: 14, opacity: 0.85, marginBottom: 12 }}>
+          Panchi scores price, duration and real-world event impact to pick the
+          best mode for you.
         </p>
 
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 12 }}>
           <button
             onClick={loadAll}
             disabled={loading}
@@ -189,257 +240,122 @@ export default function AllModes() {
               color: "#fff",
               fontWeight: 600,
               boxShadow: "0 10px 22px rgba(0,0,0,0.18)",
-              opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading ? "Refreshing all modes..." : "Refresh all modes"}
+            {loading ? "Refreshing..." : "Refresh recommendation"}
           </button>
         </div>
 
         {error && (
-          <div
-            style={{
-              marginBottom: 16,
-              padding: 10,
-              borderRadius: 12,
-              background: "#FFF4F4",
-              color: "#B00020",
-              fontSize: 13,
-            }}
-          >
+          <div style={{ marginBottom: 12, color: "#B00020", background: "#FFF4F4", padding: 10, borderRadius: 10 }}>
             {error}
           </div>
         )}
 
-        {/* Panchi's Recommendation */}
+        {/* Recommendation Card */}
         {recommended && (
           <div
             style={{
-              marginBottom: 18,
+              marginBottom: 16,
               padding: 16,
-              borderRadius: 20,
-              background:
-                "linear-gradient(135deg,#1E90FF 0%,#FF6F61 40%,#FFB347 100%)",
-              color: "#fff",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                textTransform: "uppercase",
-                opacity: 0.9,
-              }}
-            >
-              Panchi&apos;s pick for this trip {modeEmoji(recommended.type)}
-            </div>
-
-            <div style={{ marginTop: 6 }}>
-              {recommended.type === "flight" && flight && (
-                <>
-                  <div style={{ fontSize: 17, fontWeight: 700 }}>
-                    Flight · {flight.airline} · {flight.flight_no}
-                  </div>
-                  <div style={{ fontSize: 14 }}>
-                    {flight.depart} → {flight.arrive} · {flight.duration} ·{" "}
-                    {flight.stops === 0 ? "Non-stop" : `${flight.stops} stop`}
-                  </div>
-                  <div style={{ fontSize: 18, marginTop: 4 }}>
-                    ₹{flight.price}
-                  </div>
-                </>
-              )}
-
-              {recommended.type === "train" && train && (
-                <>
-                  <div style={{ fontSize: 17, fontWeight: 700 }}>
-                    Train · {train.name} · {train.number}
-                  </div>
-                  <div style={{ fontSize: 14 }}>
-                    {train.depart} → {train.arrive} · {train.duration}
-                  </div>
-                  <div style={{ fontSize: 13, marginTop: 2 }}>
-                    Class: {train.class} · Rating: ⭐ {train.rating}
-                  </div>
-                  <div style={{ fontSize: 18, marginTop: 4 }}>
-                    ₹{train.price}
-                  </div>
-                </>
-              )}
-
-              {recommended.type === "bus" && bus && (
-                <>
-                  <div style={{ fontSize: 17, fontWeight: 700 }}>
-                    Bus · {bus.operator}
-                  </div>
-                  <div style={{ fontSize: 14 }}>
-                    {bus.depart} → {bus.arrive || "Next day"} · {bus.duration}
-                  </div>
-                  <div style={{ fontSize: 13, marginTop: 2 }}>
-                    Type: {bus.type} · Rating: ⭐ {bus.rating}
-                  </div>
-                  <div style={{ fontSize: 18, marginTop: 4 }}>
-                    ₹{bus.price}
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div
-              style={{
-                marginTop: 8,
-                fontSize: 12,
-                opacity: 0.92,
-              }}
-            >
-              Why this? {reason}
-            </div>
-          </div>
-        )}
-
-        {/* FLIGHT CARD */}
-        {flight && (
-          <div
-            style={{
-              marginBottom: 14,
-              padding: 14,
               borderRadius: 18,
-              background:
-                "linear-gradient(135deg,#1E90FF 0%,#FF6F61 60%,#FFB347 100%)",
+              background: "linear-gradient(135deg,#32CD32 0%,#1E90FF 60%)",
               color: "#fff",
             }}
           >
-            <div
-              style={{
-                fontSize: 12,
-                textTransform: "uppercase",
-                opacity: 0.85,
-              }}
-            >
-              Flight · Cheapest option ✈️
+            <div style={{ fontSize: 12, textTransform: "uppercase", opacity: 0.95 }}>
+              Panchi's pick {humanModeEmoji(recommended.key)}
             </div>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>
-              {flight.airline} · {flight.flight_no}
+
+            <div style={{ marginTop: 8, fontSize: 17, fontWeight: 700 }}>
+              {recommended.label} · ₹{recommended.price}
             </div>
-            <div style={{ fontSize: 14 }}>
-              {flight.depart} → {flight.arrive} · {flight.duration}
+
+            <div style={{ fontSize: 14, marginTop: 4 }}>
+              Duration: {recommended.durationMinutes} min · Final score: {Math.round(recommended.finalScore)}
             </div>
-            <div style={{ fontSize: 13, marginTop: 2 }}>
-              {flight.stops === 0 ? "Non-stop" : `${flight.stops} stop`}
+
+            <div style={{ marginTop: 8, fontSize: 13, opacity: 0.95 }}>
+              {explanation}
             </div>
-            <div style={{ fontSize: 18, marginTop: 4 }}>₹{flight.price}</div>
           </div>
         )}
 
-        {/* TRAIN CARD */}
-        {train && (
-          <div
-            style={{
-              marginBottom: 14,
-              padding: 14,
-              borderRadius: 18,
-              background:
-                "linear-gradient(135deg,#32CD32 0%,#FFB347 100%)",
-              color: "#fff",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                textTransform: "uppercase",
-                opacity: 0.85,
-              }}
-            >
-              Train · Cheapest option 🚆
+        {/* All mode cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
+          {/* Flight Card */}
+          {flight && (
+            <div style={cardStyle}>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>✈️ Flight · {flight.airline}</div>
+              <div style={{ fontSize: 14, marginTop: 6 }}>{flight.depart} → {flight.arrive}</div>
+              <div style={{ fontSize: 13, marginTop: 6 }}>Duration: {flight.duration}</div>
+              <div style={{ marginTop: 8, fontSize: 16, fontWeight: 700 }}>₹{flight.price}</div>
             </div>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>
-              {train.name} · {train.number}
-            </div>
-            <div style={{ fontSize: 14 }}>
-              {train.depart} → {train.arrive} · {train.duration}
-            </div>
-            <div style={{ fontSize: 13, marginTop: 2 }}>
-              Class: {train.class} · Rating: ⭐ {train.rating}
-            </div>
-            <div style={{ fontSize: 18, marginTop: 4 }}>₹{train.price}</div>
-          </div>
-        )}
-
-        {/* BUS CARD */}
-        {bus && (
-          <div
-            style={{
-              marginBottom: 14,
-              padding: 14,
-              borderRadius: 18,
-              background:
-                "linear-gradient(135deg,#FF6F61 0%,#FFB347 60%,#32CD32 100%)",
-              color: "#fff",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                textTransform: "uppercase",
-                opacity: 0.85,
-              }}
-            >
-              Bus · Cheapest option 🚌
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>
-              {bus.operator}
-            </div>
-            <div style={{ fontSize: 14 }}>
-              {bus.depart} → {bus.arrive || "Next day"} · {bus.duration}
-            </div>
-            <div style={{ fontSize: 13, marginTop: 2 }}>
-              Type: {bus.type} · Rating: ⭐ {bus.rating}
-            </div>
-            <div style={{ fontSize: 18, marginTop: 4 }}>₹{bus.price}</div>
-          </div>
-        )}
-
-        {/* CAB CARD */}
-        {cab && (
-          <div
-            style={{
-              marginBottom: 8,
-              padding: 14,
-              borderRadius: 18,
-              background:
-                "linear-gradient(135deg,#32CD32 0%,#1E90FF 60%,#FFB347 100%)",
-              color: "#fff",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                textTransform: "uppercase",
-                opacity: 0.85,
-              }}
-            >
-              Cab · Cheapest option 🚕
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>
-              {cab.provider}
-            </div>
-            <div style={{ fontSize: 14 }}>
-              ETA: {cab.eta} min · Rating: ⭐ {cab.rating}
-            </div>
-            <div style={{ fontSize: 18, marginTop: 4 }}>₹{cab.price}</div>
-          </div>
-        )}
-
-        {!loading &&
-          !error &&
-          !flight &&
-          !train &&
-          !bus &&
-          !cab && (
-            <p style={{ fontSize: 13, opacity: 0.75, marginTop: 12 }}>
-              Loading sample data… If nothing appears, tap “Refresh all modes”.
-            </p>
           )}
+
+          {/* Train Card */}
+          {train && (
+            <div style={cardStyle}>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>🚆 Train · {train.name}</div>
+              <div style={{ fontSize: 14, marginTop: 6 }}>{train.depart} → {train.arrive}</div>
+              <div style={{ fontSize: 13, marginTop: 6 }}>Duration: {train.duration}</div>
+              <div style={{ marginTop: 8, fontSize: 16, fontWeight: 700 }}>₹{train.price}</div>
+            </div>
+          )}
+
+          {/* Bus Card */}
+          {bus && (
+            <div style={cardStyle}>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>🚌 Bus · {bus.operator}</div>
+              <div style={{ fontSize: 14, marginTop: 6 }}>{bus.depart} → {bus.arrive || "Next day"}</div>
+              <div style={{ fontSize: 13, marginTop: 6 }}>Duration: {bus.duration}</div>
+              <div style={{ marginTop: 8, fontSize: 16, fontWeight: 700 }}>₹{bus.price}</div>
+            </div>
+          )}
+
+          {/* Cab Card */}
+          {cab && (
+            <div style={cardStyle}>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>🚕 Cab · {cab.provider}</div>
+              <div style={{ fontSize: 14, marginTop: 6 }}>ETA: {cab.eta} min</div>
+              <div style={{ fontSize: 13, marginTop: 6 }}>Rating: ⭐ {cab.rating}</div>
+              <div style={{ marginTop: 8, fontSize: 16, fontWeight: 700 }}>₹{cab.price}</div>
+            </div>
+          )}
+        </div>
+
+        {/* Events summary for transparency */}
+        <section style={{ marginTop: 18 }}>
+          <h3 style={{ marginBottom: 10 }}>Events & context considered</h3>
+
+          {events.length === 0 && <p style={{ fontSize: 13, opacity: 0.8 }}>No event data loaded.</p>}
+
+          {events.length > 0 && (
+            <div style={{ display: "grid", gap: 10 }}>
+              {events.map((ev) => (
+                <div key={ev.id} style={{ padding: 10, borderRadius: 12, background: "#fff", border: "1px solid rgba(0,0,0,0.06)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontWeight: 700 }}>{ev.title}</div>
+                    <div style={{ fontSize: 12, color: ev.severity === "high" ? "#B00020" : "#1E90FF", fontWeight: 700 }}>
+                      {ev.severity.toUpperCase()}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 13, opacity: 0.9, marginTop: 6 }}>{ev.location} · {ev.date}</div>
+                  <div style={{ marginTop: 6, fontSize: 13 }}>{ev.impact}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </main>
   );
 }
+
+const cardStyle = {
+  padding: 14,
+  borderRadius: 14,
+  background: "#fff",
+  boxShadow: "0 10px 25px rgba(0,0,0,0.06)",
+  border: "1px solid rgba(0,0,0,0.04)",
+};
