@@ -245,10 +245,33 @@ export default function PlanPage() {
         .date-strip { display:flex; gap:10px; margin:14px 0 12px; overflow:auto; padding-bottom:6px; }
         .date-pill { background:#f6f7fb; padding:8px 12px; border-radius:10px; font-weight:700; min-width:68px; text-align:center; }
 
-        .tabs { display:flex; gap:10px; margin-bottom:12px; }
-        .tab { padding:8px 14px; border-radius:12px; border:1px solid #eef2ff; background:white; cursor:pointer; font-weight:700; }
-        .tab.active { background: linear-gradient(90deg,var(--grad-start),var(--grad-end)); color:white; border:none; box-shadow:0 8px 18px rgba(107,70,193,0.09); }
+        .tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
 
+.tab {
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #f8f9fc;
+  cursor: pointer;
+  font-weight: 600;
+  color: #374151; /* visible on all themes */
+  transition: all 0.25s ease;
+}
+
+.tab:hover {
+  background: #eef1f7;
+}
+
+.tab.active {
+  background: linear-gradient(90deg, #7a5cf4, #ff6fb1);
+  color: #ffffff !important;
+  border: none;
+  box-shadow: 0 8px 18px rgba(107, 70, 193, 0.18);
+}
         .results { display:flex; flex-direction:column; gap:10px; margin-top:8px; }
 
         .result { display:flex; justify-content:space-between; align-items:center; padding:14px; background:#fbfcff; border-radius:10px; border:1px solid #f1f5f9; }
