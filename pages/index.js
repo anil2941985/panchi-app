@@ -15,6 +15,11 @@ export default function Home() {
   const [hotLoading, setHotLoading] = useState(false);
   const [hotError, setHotError] = useState("");
 
+  // EVENTS
+  const [events, setEvents] = useState([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventsError, setEventsError] = useState("");
+
   // NAME LOAD
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -25,21 +30,24 @@ export default function Home() {
     }
   }, []);
 
-  // LOAD NUDGES + HOT PLACES
+  // LOAD NUDGES + HOT PLACES + EVENTS
   useEffect(() => {
     loadNudges();
     loadHotPlaces();
+    loadEvents();
   }, []);
 
   // ----- FETCH NUDGES API -----
   async function loadNudges() {
     try {
       setNudgesLoading(true);
+      setNudgesError("");
       const res = await fetch("/api/mockNudges");
-      if (!res.ok) throw new Error("Failed nudges");
+      if (!res.ok) throw new Error("Failed to load nudges");
       const data = await res.json();
       setNudges(data);
     } catch (err) {
+      console.error(err);
       setNudgesError("Could not load nudges.");
     } finally {
       setNudgesLoading(false);
@@ -50,14 +58,33 @@ export default function Home() {
   async function loadHotPlaces() {
     try {
       setHotLoading(true);
+      setHotError("");
       const res = await fetch("/api/mockHotPlaces");
       if (!res.ok) throw new Error("Failed hot places");
       const data = await res.json();
       setHotPlaces(data);
     } catch (err) {
-      setHotError("Hot places unavailable right now.");
+      console.error(err);
+      setHotError("Hot places unavailable.");
     } finally {
       setHotLoading(false);
+    }
+  }
+
+  // ----- FETCH EVENTS API -----
+  async function loadEvents() {
+    try {
+      setEventsLoading(true);
+      setEventsError("");
+      const res = await fetch("/api/mockEvents");
+      if (!res.ok) throw new Error("Failed events");
+      const data = await res.json();
+      setEvents(data);
+    } catch (err) {
+      console.error(err);
+      setEventsError("Could not load events.");
+    } finally {
+      setEventsLoading(false);
     }
   }
 
@@ -66,7 +93,9 @@ export default function Home() {
     e.preventDefault();
     const trimmed = nameInput.trim();
     if (!trimmed) return;
-    window.localStorage.setItem("panchiName", trimmed);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("panchiName", trimmed);
+    }
     setStoredName(trimmed);
   }
 
@@ -117,7 +146,7 @@ export default function Home() {
             style={{ height: "70px" }}
           />
           <div style={{ fontSize: "14px", opacity: 0.7 }}>
-            Cheapest trips · MVP
+            Context-aware travel · MVP
           </div>
         </header>
 
@@ -137,7 +166,7 @@ export default function Home() {
             Where are we going next?
           </h1>
           <p style={{ fontSize: "14px" }}>
-            Panchi finds the smartest and cheapest ways to reach your destination.
+            Panchi watches weather, events, prices and traffic so you don't have to.
           </p>
         </section>
 
@@ -227,24 +256,22 @@ export default function Home() {
             <button style={chip}>Manali cold ❄️ (soon)</button>
             <button style={chip}>Jaipur forts 🏰 (soon)</button>
           </div>
-
-          <p style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
-            Live APIs coming soon.
-          </p>
         </section>
 
         {/* SMART NUDGES */}
-        <section style={{ marginBottom: 26 }}>
+        <section style={{ marginBottom: 22 }}>
           <h3>Smart nudges for this week</h3>
-
           {nudgesLoading && <p>Loading nudges…</p>}
-          {nudgesError && <p>{nudgesError}</p>}
-
+          {nudgesError && (
+            <p style={{ color: "#B00020", background: "#FFF4F4", padding: 8 }}>
+              {nudgesError}
+            </p>
+          )}
           {!nudgesLoading && nudges.length > 0 && (
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
                 gap: 12,
               }}
             >
@@ -257,19 +284,17 @@ export default function Home() {
                     background: "rgba(30,144,255,0.06)",
                   }}
                 >
-                  <div style={{ fontWeight: 600 }}>
-                    {item.icon} {item.title}
-                  </div>
-                  <div style={{ fontSize: 12, opacity: 0.8 }}>
+                  <div style={{ fontWeight: 700 }}>{item.icon} {item.title}</div>
+                  <div style={{ fontSize: 12, opacity: 0.85, marginTop: 6 }}>
                     {item.detail}
                   </div>
                   <div
                     style={{
-                      marginTop: 6,
+                      marginTop: 8,
                       background: "rgba(255,111,97,0.08)",
                       padding: "6px 8px",
                       borderRadius: 999,
-                      fontSize: 11,
+                      fontSize: 12,
                     }}
                   >
                     {item.impact}
@@ -278,15 +303,16 @@ export default function Home() {
               ))}
             </div>
           )}
+          <div style={{ fontSize: 11, opacity: 0.75, marginTop: 8 }}>
+            Real-time nudges will come from weather, traffic & event feeds.
+          </div>
         </section>
 
-        {/* HOT PLACES SECTION */}
-        <section style={{ marginBottom: 28 }}>
+        {/* HOT PLACES */}
+        <section style={{ marginBottom: 26 }}>
           <h3>🔥 Hot places in India right now</h3>
-
           {hotLoading && <p>Loading places…</p>}
           {hotError && <p>{hotError}</p>}
-
           {!hotLoading && hotPlaces.length > 0 && (
             <div
               style={{
@@ -304,19 +330,17 @@ export default function Home() {
                     background:
                       "linear-gradient(135deg,#1E90FF 0%,#FFB347 80%)",
                     color: "#fff",
-                    boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+                    boxShadow: "0 10px 25px rgba(0,0,0,0.12)",
                   }}
                 >
-                  <div style={{ fontSize: 22 }}>{p.emoji}</div>
-                  <div style={{ fontSize: 17, fontWeight: 700 }}>
-                    {p.title}
-                  </div>
-                  <div style={{ fontSize: 13, opacity: 0.9 }}>{p.reason}</div>
+                  <div style={{ fontSize: 28 }}>{p.emoji}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700 }}>{p.title}</div>
+                  <div style={{ fontSize: 13, opacity: 0.95 }}>{p.reason}</div>
 
                   <div
                     style={{
-                      marginTop: 6,
-                      background: "rgba(255,255,255,0.18)",
+                      marginTop: 8,
+                      background: "rgba(255,255,255,0.16)",
                       padding: "6px 10px",
                       borderRadius: 999,
                       fontSize: 12,
@@ -327,9 +351,9 @@ export default function Home() {
 
                   <div
                     style={{
-                      marginTop: 6,
+                      marginTop: 8,
                       fontSize: 13,
-                      background: "rgba(255,255,255,0.15)",
+                      background: "rgba(255,255,255,0.12)",
                       padding: "6px 10px",
                       borderRadius: 999,
                     }}
@@ -340,6 +364,96 @@ export default function Home() {
               ))}
             </div>
           )}
+        </section>
+
+        {/* EVENTS */}
+        <section style={{ marginBottom: 26 }}>
+          <h3>📅 What’s happening — events & crowd alerts</h3>
+          {eventsLoading && <p>Loading events…</p>}
+          {eventsError && (
+            <p style={{ color: "#B00020", background: "#FFF4F4", padding: 8 }}>
+              {eventsError}
+            </p>
+          )}
+
+          {!eventsLoading && events.length > 0 && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+                gap: 12,
+              }}
+            >
+              {events.map((ev) => (
+                <div
+                  key={ev.id}
+                  style={{
+                    padding: 14,
+                    borderRadius: 16,
+                    background: "#fff",
+                    border: "1px solid rgba(0,0,0,0.06)",
+                    boxShadow: "0 8px 20px rgba(0,0,0,0.06)",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 700 }}>{ev.title}</div>
+                      <div style={{ fontSize: 13, opacity: 0.8 }}>{ev.location} · {ev.date}</div>
+                    </div>
+                    <div style={{
+                      fontSize: 12,
+                      padding: "6px 8px",
+                      borderRadius: 10,
+                      background: ev.severity === "high" ? "rgba(255,111,97,0.12)" : "rgba(30,144,255,0.08)",
+                      color: ev.severity === "high" ? "#B00020" : "#1E90FF",
+                      fontWeight: 700,
+                      whiteSpace: "nowrap"
+                    }}>
+                      {ev.severity.toUpperCase()}
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 8, fontSize: 13, opacity: 0.9 }}>{ev.detail}</div>
+
+                  <div style={{ marginTop: 10, display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ fontSize: 12, color: "#444" }}><strong>Impact:</strong> {ev.impact}</div>
+
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button style={{
+                        padding: "8px 10px",
+                        borderRadius: 999,
+                        border: "1px solid rgba(0,0,0,0.06)",
+                        background: "transparent",
+                        cursor: "pointer",
+                        fontSize: 13
+                      }}>
+                        Save alert
+                      </button>
+                      <button style={{
+                        padding: "8px 10px",
+                        borderRadius: 999,
+                        border: "none",
+                        background: "linear-gradient(135deg,#1E90FF 0%,#FF6F61 50%)",
+                        color: "#fff",
+                        cursor: "pointer",
+                        fontSize: 13
+                      }}>
+                        More info
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 8, fontSize: 12, opacity: 0.85 }}>
+                    Panchi suggestion: {ev.recommendedAction}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ marginTop: 10, fontSize: 11, opacity: 0.75 }}>
+            Event data in the production app will come from ticketing & event APIs plus civic advisories.
+          </div>
         </section>
 
         {/* EXPLORE BY MODE */}
