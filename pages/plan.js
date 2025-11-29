@@ -2,16 +2,12 @@
 import { useEffect, useState, useRef } from "react";
 
 /*
-  Panchi - Full AI Planner (single-file replacement)
-  - Advanced timeline & scoring
-  - Trending card layout (full replacement)
-  - Deep-link bullets -> scroll & highlight
-  - Save alerts -> localStorage
-  Notes:
-  - Optional mock APIs: /api/mockNudges, /api/mockEvents, /api/mockHotPlaces,
-    /api/mockCommunity, /api/mockFlights, /api/mockTrains, /api/mockBuses,
-    /api/mockCabs, /api/mockPriceTrends
-  - Falls back to internal synth if APIs are missing.
+  Panchi - Planner (full replacement)
+  - Updated layout rules to avoid grid overflow / alignment issues
+  - Sticky left nudges column
+  - Responsive trending grid with auto-fit
+  - Event card max-height + internal scroll
+  - All previous planner logic kept
 */
 
 export default function PlanPage() {
@@ -26,23 +22,18 @@ export default function PlanPage() {
   const [hotPlaces, setHotPlaces] = useState([]);
   const [reviews, setReviews] = useState([]);
 
-  // transports
+  // transports / timeline / verdict
   const [flight, setFlight] = useState(null);
   const [train, setTrain] = useState(null);
   const [bus, setBus] = useState(null);
   const [cab, setCab] = useState(null);
-
-  // timeline
-  const [timeline, setTimeline] = useState([]); // array of {date, priceIndex, weatherRisk, eventRisk, score}
+  const [timeline, setTimeline] = useState([]);
   const [selectedDay, setSelectedDay] = useState(null);
-
-  // verdict & ranking
-  const [verdict, setVerdict] = useState(null); // {score,label,summary,bullets}
-  const [ranked, setRanked] = useState([]); // scored options
-
+  const [verdict, setVerdict] = useState(null);
+  const [ranked, setRanked] = useState([]);
   const [savedAlerts, setSavedAlerts] = useState([]);
 
-  // refs for deep-link highlighting
+  // refs
   const nudgesRef = useRef(null);
   const eventsRef = useRef(null);
   const hotRef = useRef(null);
@@ -50,7 +41,6 @@ export default function PlanPage() {
   const timelineRef = useRef(null);
 
   useEffect(() => {
-    // read destination from URL
     if (typeof window !== "undefined") {
       const q = new URLSearchParams(window.location.search);
       const dest = q.get("destination") || q.get("q") || "Goa";
@@ -59,7 +49,6 @@ export default function PlanPage() {
   }, []);
 
   useEffect(() => {
-    // load saved alerts
     if (typeof window !== "undefined") {
       try {
         const s = window.localStorage.getItem("panchiAlerts");
@@ -75,9 +64,6 @@ export default function PlanPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [destination]);
 
-  /* ----------------------
-     Main planner runner
-  ---------------------- */
   async function runPlanner() {
     setLoading(true);
     setContextLoading(true);
@@ -85,7 +71,7 @@ export default function PlanPage() {
     setVerdict(null);
     setRanked([]);
     try {
-      // parallel fetch
+      // try fetching mock APIs; fallback to an internal mock if unavailable
       const [
         nudgesRes,
         eventsRes,
@@ -122,11 +108,9 @@ export default function PlanPage() {
       if (trendRes.status === "fulfilled" && trendRes.value.ok) {
         trendData = await trendRes.value.json();
       } else {
-        // fallback: synthesize 7-day priceIndex, weatherRisk and eventRisk
         trendData = synthesizeTrend(destination, eventsData, nudgesData);
       }
 
-      // set state
       setNudges(nudgesData || []);
       setEvents(eventsData || []);
       setHotPlaces(hotData || []);
@@ -137,14 +121,12 @@ export default function PlanPage() {
       setBus((busesData && busesData[0]) || null);
       setCab((cabsData && cabsData[0]) || null);
 
-      // compute timeline scores
       const timelineWithScores = computeTimelineScores(trendData, eventsData, nudgesData);
       setTimeline(timelineWithScores);
       setSelectedDay(timelineWithScores[0] || null);
 
       setContextLoading(false);
 
-      // context insight & verdict
       const insight = buildVerdict({
         destination,
         nudges: nudgesData,
@@ -155,7 +137,6 @@ export default function PlanPage() {
       });
       setVerdict(insight);
 
-      // scoring & ranking
       const rankedOptions = scoreOptions({
         destination,
         flight: (flightsData && flightsData[0]) || null,
@@ -174,9 +155,6 @@ export default function PlanPage() {
     }
   }
 
-  /* ----------------------
-     Deep link = scroll + highlight
-  ---------------------- */
   function handleJump(targetId) {
     const map = {
       nudges: nudgesRef.current,
@@ -192,9 +170,6 @@ export default function PlanPage() {
     setTimeout(() => el.classList.remove("panchi-highlight"), 2200);
   }
 
-  /* ----------------------
-     Save alert (localStorage)
-  ---------------------- */
   function saveAlert() {
     try {
       const alerts = (typeof window !== "undefined" && JSON.parse(window.localStorage.getItem("panchiAlerts") || "[]")) || [];
@@ -208,42 +183,21 @@ export default function PlanPage() {
     }
   }
 
-  /* ----------------------
-     UI Helpers
-  ---------------------- */
-  function humanModeEmoji(k) {
-    if (k === "flight") return "✈️";
-    if (k === "train") return "🚆";
-    if (k === "bus") return "🚌";
-    if (k === "cab") return "🚕";
-    return "✳️";
-  }
-
   function toast(msg) {
-    // simple quick browser toast
     if (typeof window !== "undefined") alert(msg);
   }
 
-  /* ----------------------
-     TIMELINE: synthesize fallback
-  ---------------------- */
   function synthesizeTrend(dest, eventsList = [], nudgesList = []) {
-    // produce 7 days starting today
     const res = [];
     const now = new Date();
     for (let i = 0; i < 7; i++) {
       const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
-      // base priceIndex random around 0.4..0.8 but influenced by hotPlaces or events
-      let priceIndex = 0.45 + Math.random() * 0.4; // 0.45..0.85
-      // if events near dest, bump price for overlapping days
+      let priceIndex = 0.45 + Math.random() * 0.4;
       const dayStr = d.toISOString().slice(0, 10);
       const eventRisk = eventsList.some((ev) => ev.location && ev.location.toLowerCase().includes(dest.toLowerCase()) && ev.date === dayStr) ? 0.8 : 0;
-      // nudges with pricing type increases near term
       const pricingNudge = nudgesList.some((n) => n.type === "pricing") ? 0.12 : 0;
       priceIndex = Math.min(0.98, priceIndex + eventRisk * 0.25 + pricingNudge);
-      // weather risk: if nudges include weather, set moderate risk
       const weatherRisk = nudgesList.some((n) => n.type === "weather") ? 0.4 : Math.random() * 0.25;
-      // eventRisk as binary for fallback, or low random
       const evRisk = eventRisk || (Math.random() > 0.85 ? 0.4 : 0);
       res.push({
         date: d.toISOString().slice(0, 10),
@@ -255,10 +209,6 @@ export default function PlanPage() {
     return res;
   }
 
-  /* ----------------------
-     TIMELINE compute (scoring)
-     score = (1-priceIndex)*0.5 + (1-weatherRisk)*0.3 + (1-eventRisk)*0.2
-  ---------------------- */
   function computeTimelineScores(trendData, eventsList, nudgesList) {
     if (!trendData || trendData.length === 0) return [];
     const out = trendData.map((d) => {
@@ -271,15 +221,11 @@ export default function PlanPage() {
     return out;
   }
 
-  /* ----------------------
-     VERDICT builder
-  ---------------------- */
   function buildVerdict({ destination, nudges, events, hotPlaces, reviews, timeline }) {
     const dest = destination.toLowerCase();
     let score = 60;
     const bullets = [];
 
-    // hot place effect
     const hot = hotPlaces.find((h) => h.title && h.title.toLowerCase() === dest);
     if (hot) {
       bullets.push(`${hot.title} trending — ${hot.reason || hot.subtitle} (budget ${hot.budget || "varies"}).`);
@@ -288,7 +234,6 @@ export default function PlanPage() {
       score -= 4;
     }
 
-    // relevant nudges
     const relevantNudges = (nudges || []).filter((n) => {
       return (
         (n.title && n.title.toLowerCase().includes(dest)) ||
@@ -313,7 +258,6 @@ export default function PlanPage() {
       }
     });
 
-    // relevant events
     const relevantEvents = (events || []).filter((ev) => ev.location && ev.location.toLowerCase().includes(dest));
     relevantEvents.forEach((ev) => {
       bullets.push(`Event: ${ev.title} on ${ev.date} — ${ev.impact || ""}`);
@@ -322,7 +266,6 @@ export default function PlanPage() {
       else score -= 4;
     });
 
-    // community signals (ratings & tips)
     const relevantReviews = (reviews || []).filter((r) => r.location && r.location.toLowerCase().includes(dest));
     if (relevantReviews.length > 0) {
       const avg = Math.round((relevantReviews.reduce((s, r) => s + (r.rating || 4.5), 0) / relevantReviews.length) * 10) / 10;
@@ -330,7 +273,6 @@ export default function PlanPage() {
       score += (avg - 4.0) * 4;
     }
 
-    // timeline influence - pick best day and worst day
     if (timeline && timeline.length > 0) {
       const best = timeline.reduce((acc, d) => (d.score > (acc.score || -1) ? d : acc), {});
       const worst = timeline.reduce((acc, d) => (d.score < (acc.score || 999) ? d : acc), {});
@@ -340,11 +282,9 @@ export default function PlanPage() {
       else score += 6;
     }
 
-    // clamp
     if (score > 95) score = 95;
     if (score < 5) score = 5;
 
-    // label
     let label = "Okay to visit";
     if (score >= 70) label = "Good to go";
     else if (score >= 45) label = "Plan with caution";
@@ -369,9 +309,6 @@ export default function PlanPage() {
     return dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
   }
 
-  /* ----------------------
-     SCORING ENGINE
-  ---------------------- */
   function scoreOptions({ destination, flight, train, bus, cab, context, timelineDay }) {
     const opts = [];
     if (flight) opts.push({ key: "flight", label: "Flight", data: flight });
@@ -487,9 +424,6 @@ export default function PlanPage() {
     return Math.max(0, (5 - avg) * 6);
   }
 
-  /* ----------------------
-     UI Rendering
-  ---------------------- */
   return (
     <>
       <style>{pageCss}</style>
@@ -497,20 +431,14 @@ export default function PlanPage() {
         <div className="container">
           <header className="header">
             <div className="left">
-              <a className="back" href="/">
-                ◀
-              </a>
+              <a className="back" href="/">◀</a>
               <img src="/panchi-logo.png" alt="Panchi" className="logo" />
               <div className="subtitle">AI Planner · Context-first</div>
             </div>
 
             <div className="right">
-              <a className="link" href="/waitlist">
-                Join waitlist
-              </a>
-              <button className="btn" onClick={runPlanner}>
-                Refresh
-              </button>
+              <a className="link" href="/waitlist">Join waitlist</a>
+              <button className="btn" onClick={runPlanner}>Refresh</button>
             </div>
           </header>
 
@@ -520,7 +448,6 @@ export default function PlanPage() {
           {contextLoading && <div className="mutedBox">Loading context & signals…</div>}
           {error && <div className="errorBox">{error}</div>}
 
-          {/* VERDICT */}
           {verdict && (
             <section className="verdict">
               <div className="verdictLeft">
@@ -533,9 +460,7 @@ export default function PlanPage() {
               </div>
 
               <div className="verdictRight">
-                <button className="saveBtn" onClick={saveAlert}>
-                  Save alert
-                </button>
+                <button className="saveBtn" onClick={saveAlert}>Save alert</button>
               </div>
 
               <div className="verdictBullets">
@@ -547,23 +472,20 @@ export default function PlanPage() {
                   else if (lower.includes("best upcoming day") || lower.includes("avoid day")) target = "timeline";
                   else if (lower.includes("community")) target = "reviews";
                   return (
-                    <button key={i} className="bullet" onClick={() => handleJump(target)}>
-                      • {b}
-                    </button>
+                    <button key={i} className="bullet" onClick={() => handleJump(target)}>• {b}</button>
                   );
                 })}
               </div>
             </section>
           )}
 
-          {/* TIMELINE */}
-          <section ref={timelineRef} id="timeline-section" className="timelineSection">
+          <section className="timelineSection">
             <div className="sectionHeader">
               <h3>📅 Best days to travel (7-day view)</h3>
               <div className="tiny">Click a day to bias recommendations</div>
             </div>
 
-            <div className="timelineRow">
+            <div className="timelineRow" ref={timelineRef}>
               {timeline && timeline.length > 0 ? (
                 timeline.map((d) => {
                   const color = d.score >= 0.75 ? "good" : d.score >= 0.5 ? "ok" : "bad";
@@ -602,10 +524,8 @@ export default function PlanPage() {
             </div>
           </section>
 
-          {/* SIGNALS grid: left nudges, right content */}
           <section className="signals">
             <div className="grid">
-              {/* LEFT: Nudges sidebar */}
               <div ref={nudgesRef} id="nudges-section" className="card nudgesSidebar">
                 <h4>Nudges & alerts</h4>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -622,9 +542,8 @@ export default function PlanPage() {
                 </div>
               </div>
 
-              {/* RIGHT: Events + Trending + Reviews */}
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <div ref={eventsRef} id="events-section" className="card">
+                <div ref={eventsRef} id="events-section" className="card eventsCard">
                   <h4>Events & crowd alerts</h4>
                   {(events || []).length === 0 && <div className="mutedBox">No events</div>}
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -642,7 +561,6 @@ export default function PlanPage() {
                   </div>
                 </div>
 
-                {/* TRENDING cards (REPLACED) */}
                 <div ref={hotRef} id="hot-section" className="card hotSection">
                   <h4>Trending trips & ideas</h4>
 
@@ -668,7 +586,6 @@ export default function PlanPage() {
                               className="trendBtn"
                               onClick={() => {
                                 setDestination(h.title);
-                                // update url and re-run planner
                                 if (typeof window !== "undefined") {
                                   const url = new URL(window.location.href);
                                   url.searchParams.set("destination", h.title);
@@ -704,7 +621,6 @@ export default function PlanPage() {
             </div>
           </section>
 
-          {/* RANKED RESULTS */}
           <section id="results-section" className="results">
             <h3>Recommended options</h3>
             {loading && <div className="mutedBox">Scoring options...</div>}
@@ -732,7 +648,6 @@ export default function PlanPage() {
             </div>
           </section>
 
-          {/* SAVED ALERTS */}
           <section className="alerts">
             <h4>Saved alerts</h4>
             {savedAlerts && savedAlerts.length === 0 && <div className="mutedBox">No saved alerts</div>}
@@ -750,19 +665,22 @@ export default function PlanPage() {
   );
 }
 
-/* ----------------------
-   Inline CSS (full replacement) - trending layout + responsive
----------------------- */
+/* ------------------------
+   CSS (full updated)
+   - key changes:
+     grid-template-columns: 280px minmax(0, 1fr)
+     eventsCard max-height + overflow
+     trendingGrid auto-fit
+     nudges sticky
+------------------------ */
 const pageCss = `
 :root{
-  --bg1:#0f1724;
-  --grad1: linear-gradient(135deg, #0ea5e9 0%, #7c3aed 50%, #ff7a59 100%);
   --card-bg: rgba(255,255,255,0.98);
 }
 *{box-sizing:border-box;font-family:Inter, Poppins, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
-body,html,#__next{margin:0;padding:0;background:radial-gradient(1200px 400px at 10% 10%, rgba(124,58,237,0.04), transparent), linear-gradient(180deg, rgba(14,165,233,0.02), rgba(255,255,255,0.02));}
-.page{padding:28px 18px 80px;}
-.container{max-width:1200px;margin:0 auto;background:var(--card-bg);border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(16,24,40,0.12);}
+body,html,#__next{margin:0;padding:0;background:linear-gradient(180deg, rgba(14,165,233,0.02), rgba(255,255,255,0.02));}
+.page{padding:28px 12px 80px;}
+.container{max-width:1300px;margin:0 auto;background:var(--card-bg);border-radius:18px;padding:18px;box-shadow:0 20px 60px rgba(16,24,40,0.08);}
 
 /* header */
 .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px}
@@ -810,10 +728,12 @@ body,html,#__next{margin:0;padding:0;background:radial-gradient(1200px 400px at 
 /* signals & trending layout - updated for trending card design */
 .signals { margin-bottom:18px; }
 
-/* Desktop: left narrow column + right content flow */
+/* Desktop: left narrow column + right content flow.
+   Use minmax(0, 1fr) to allow children to shrink correctly and avoid overflow.
+*/
 .grid {
   display: grid;
-  grid-template-columns: 300px 1fr; /* left sidebar (nudges) + right content */
+  grid-template-columns: 280px minmax(0, 1fr);
   gap: 18px;
   align-items: start;
 }
@@ -826,19 +746,25 @@ body,html,#__next{margin:0;padding:0;background:radial-gradient(1200px 400px at 
   box-shadow: 0 12px 30px rgba(2,6,23,0.04);
 }
 
-/* Nudges sidebar (left column) */
-.nudgesSidebar { max-height: 640px; overflow:auto; }
-
-/* EVENTS card style (right column, top) */
-#events-section.card {
-  display: block;
+/* MAKE LEFT SIDEBAR sticky + scrollable */
+.nudgesSidebar {
+  position: sticky;
+  top: 20px;
+  max-height: calc(100vh - 120px);
+  overflow:auto;
+  padding-right:6px;
 }
 
-/* Trending section specifics */
-.hotSection { padding-bottom: 8px; }
+/* events card: set a max height so it won't push the layout; make it scroll internally */
+.eventsCard {
+  max-height: 520px;
+  overflow: auto;
+}
+
+/* Trending grid uses auto-fit to make columns responsive */
 .trendingGrid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
   align-items: stretch;
 }
@@ -851,7 +777,7 @@ body,html,#__next{margin:0;padding:0;background:radial-gradient(1200px 400px at 
   overflow: hidden;
   background: linear-gradient(180deg, #fff, #fcfcff);
   box-shadow: 0 12px 28px rgba(2,6,23,0.06);
-  min-height: 120px;
+  min-height: 140px;
 }
 
 /* image area */
@@ -916,7 +842,7 @@ body,html,#__next{margin:0;padding:0;background:radial-gradient(1200px 400px at 
   cursor:pointer;
 }
 
-/* reviews and other cards remain scrollable horizontally */
+/* review horizontal cards */
 .review { min-width:220px; border-radius:10px; padding:10px; background:linear-gradient(180deg,#fff,#fbfaff); box-shadow:0 6px 18px rgba(2,6,23,0.04); }
 
 /* results */
@@ -948,21 +874,23 @@ body,html,#__next{margin:0;padding:0;background:radial-gradient(1200px 400px at 
 .panchi-highlight{box-shadow:0 24px 60px rgba(124,58,237,0.12);transform:translateY(-6px);transition:all 0.28s ease}
 
 /* responsive */
-@media(max-width:880px){
+@media(max-width:980px){
+  .container{padding:14px}
   .grid{grid-template-columns:1fr}
-  .trendingGrid{grid-template-columns:1fr}
-  .nudgesSidebar{max-height:none}
+  .nudgesSidebar{position:relative;top:auto;max-height:none}
+  .eventsCard{max-height:none;overflow:visible}
+  .trendingGrid{grid-template-columns:repeat(1,1fr)}
 }
 `;
 
-/* ----------------------
-   Simple internal mocks (fallbacks)
----------------------- */
+/* ------------------------
+   Internal fallback mocks (same as earlier)
+------------------------ */
 function simpleMockNudges() {
   return [
     { id: "n1", type: "weather", title: "Rain alert in Goa this weekend", detail: "Light rain expected on Saturday evening around Baga-Calangute stretch.", icon: "☔" },
     { id: "n2", type: "pricing", title: "Flight surge likely for Goa next Friday", detail: "Searches spike for DEL → GOI, book early to save.", icon: "🔥" },
-    { id: "n3", type: "traffic", title: "High traffic near Delhi airport (T3) evening", detail: "Expect delays 6-9 PM", icon: "🚦" },
+    { id: "n3", type: "traffic", title: "High traffic near Delhi airport (T3) during evening peak", detail: "Construction + office traffic between 5 PM–8 PM on NH-48 towards IGI.", icon: "🚦" },
   ];
 }
 function simpleMockEvents() {
@@ -970,17 +898,16 @@ function simpleMockEvents() {
   const later = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + 12);
   const laterStr = later.toISOString().slice(0, 10);
   return [
-    { id: "e1", title: "Sunburn-esque EDM Festival", location: "Vagator, Goa", date: laterStr, severity: "high", impact: "High crowding - Hotels +30% - Cab surge likely", recommendedAction: "Book hotels + cabs now if attending; avoid beachfront stays if you want quiet.", },
-    { id: "e2", title: "Classical Music Fest", location: "Thiruvananthapuram", date: "2025-11-09", severity: "medium", impact: "Moderate; boutique hotels fill fast", recommendedAction: "Book boutique stays early; avoid late-night cab dependence." },
-    { id: "e3", title: "Grand Durga Visarjan (sample)", location: "Kolkata", date: "2025-10-08", severity: "high", impact: "Large crowds; road diversions", recommendedAction: "Avoid travel through processions; use metro where possible." }
+    { id: "e1", title: "Sunburn-esque EDM Festival", location: "Vagator, Goa", date: laterStr, severity: "high", impact: "High crowding - Hotels +30% - Cab surge likely", recommendedAction: "Book hotels + cabs now if attending; avoid beachfront stays if you want quiet." },
+    { id: "e2", title: "IPL Playoffs (Sample)", location: "Mumbai", date: "2026-05-20", severity: "high", impact: "High hotel & flight demand - Local transport crowded", recommendedAction: "If visiting for the match, book transport ahead and plan longer arrival buffers to stadiums." },
+    { id: "e3", title: "Classical Music Fest", location: "Thiruvananthapuram", date: "2025-11-09", severity: "medium", impact: "Moderate; few boutique hotels fill fast", recommendedAction: "Book boutique stays early; inland transport smooth but limited late-night cabs." },
   ];
 }
 function simpleMockHotPlaces() {
   return [
-    { id: "h1", title: "Goa", subtitle: "Beaches & nightlife", reason: "Peak weekend demand + music festivals", budget: "3000-8000", tag: "Beach", image: "/placeholder-trip.jpg" },
-    { id: "h2", title: "Manali", subtitle: "Hills & treks", reason: "Perfect weather window", budget: "2000-6000", tag: "Hills", image: "/placeholder-trip.jpg" },
-    { id: "h3", title: "Jaipur", subtitle: "Heritage & forts", reason: "Cultural tours trending", budget: "1500-5000", tag: "Culture", image: "/placeholder-trip.jpg" },
-    { id: "h4", title: "Udaipur", subtitle: "Palaces & lake stays", reason: "Romantic getaways", budget: "3000-9000", tag: "Luxury", image: "/placeholder-trip.jpg" },
+    { id: "h1", title: "Goa", subtitle: "Perfect weather + off-peak weekday flight deals", reason: "Beaches & nightlife trending", budget: "6,000–8,500", tag: "Beach", image: "/placeholder-trip.jpg" },
+    { id: "h2", title: "Rishikesh", subtitle: "Great rafting season, clear skies", reason: "Adventure seekers trending", budget: "3,500–5,000", tag: "Adventure", image: "/placeholder-trip.jpg" },
+    { id: "h3", title: "Jaipur", subtitle: "Forts & heritage stays", reason: "Culture & photogenic spots", budget: "2,000–6,000", tag: "Culture", image: "/placeholder-trip.jpg" },
   ];
 }
 function simpleMockReviews() {
@@ -1002,12 +929,9 @@ function simpleMockTrains(dest) {
   ];
 }
 function simpleMockBuses(dest) {
-  return [
-    { id: "b1", depart: "DEL 21:00", arrive: `${dest} 09:00`, duration: "12h 0m", price: 900 },
-  ];
+  return [{ id: "b1", depart: "DEL 21:00", arrive: `${dest} 09:00`, duration: "12h 0m", price: 900 }];
 }
 function simpleMockCabs(dest) {
-  return [
-    { id: "c1", depart: "Airport", arrive: `${dest} City`, duration: "30m", price: 650, eta: "12 min" },
-  ];
+  return [{ id: "c1", depart: "Airport", arrive: `${dest} City`, duration: "30m", price: 650, eta: "12 min" }];
 }
+`;
