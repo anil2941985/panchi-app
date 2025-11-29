@@ -1,81 +1,88 @@
 // pages/plan.js
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
-/**
- * Panchi AI Planner (MVP)
- * - Reads destination from query string (?destination=Goa)
- * - Loads context (nudges, events, hotPlaces, community reviews)
- * - Loads mock transport options (flights/trains/buses/cabs)
- * - Produces a context-first verdict and ranked transport options
- *
- * NOTE:
- * - This is rules-based (MVP). Replace scoring/evidence logic with real AI later.
- * - Relies on existing mock APIs: /api/mockNudges, /api/mockEvents, /api/mockHotPlaces,
- *   /api/mockCommunity, /api/mockFlights, /api/mockTrains, /api/mockBuses, /api/mockCabs
- */
+/*
+  Panchi - Full AI Planner (single-file)
+  - Advanced timeline
+  - Deep-link bullets -> scroll & highlight
+  - Smarter scoring engine (price/duration/events/weather/reviews/trend)
+  - No trip-type prompt (auto mode)
+  - Premium gradient styling
+  Notes: relies on your mock APIs if present. Falls back to internal mock generators.
+*/
 
-export default function Plan() {
-  const [destination, setDestination] = useState("");
+export default function PlanPage() {
+  const [destination, setDestination] = useState("Goa");
   const [loading, setLoading] = useState(false);
   const [contextLoading, setContextLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // context data
+  // context
   const [nudges, setNudges] = useState([]);
   const [events, setEvents] = useState([]);
   const [hotPlaces, setHotPlaces] = useState([]);
   const [reviews, setReviews] = useState([]);
 
-  // transport options
+  // transports
   const [flight, setFlight] = useState(null);
   const [train, setTrain] = useState(null);
   const [bus, setBus] = useState(null);
   const [cab, setCab] = useState(null);
 
-  // computed
-  const [verdict, setVerdict] = useState(null); // {score, label, bullets[]}
-  const [rankedOptions, setRankedOptions] = useState([]);
+  // timeline
+  const [timeline, setTimeline] = useState([]); // array of {date, priceIndex, weatherRisk, eventRisk, score}
+  const [selectedDay, setSelectedDay] = useState(null);
+
+  // verdict & ranking
+  const [verdict, setVerdict] = useState(null); // {score,label,summary,bullets}
+  const [ranked, setRanked] = useState([]); // scored options
+
   const [savedAlerts, setSavedAlerts] = useState([]);
 
-  useEffect(() => {
-    // read destination from URL
-    try {
-      if (typeof window !== "undefined") {
-        const q = new URLSearchParams(window.location.search);
-        const dest = q.get("destination") || q.get("q") || q.get("place") || "Goa";
-        setDestination(dest);
-      }
-    } catch (e) {
-      setDestination("Goa");
-    }
-  }, []);
+  // refs for deep-link highlighting
+  const nudgesRef = useRef(null);
+  const eventsRef = useRef(null);
+  const hotRef = useRef(null);
+  const reviewsRef = useRef(null);
+  const timelineRef = useRef(null);
 
   useEffect(() => {
-    // load saved alerts from localStorage
+    // read destination
     if (typeof window !== "undefined") {
-      const s = window.localStorage.getItem("panchiAlerts");
-      if (s) {
-        try {
-          setSavedAlerts(JSON.parse(s));
-        } catch {}
+      const q = new URLSearchParams(window.location.search);
+      const dest = q.get("destination") || q.get("q") || "Goa";
+      setDestination(dest);
+    }
+  }, []);
+
+  useEffect(() => {
+    // load saved alerts
+    if (typeof window !== "undefined") {
+      try {
+        const s = window.localStorage.getItem("panchiAlerts");
+        setSavedAlerts(s ? JSON.parse(s) : []);
+      } catch {
+        setSavedAlerts([]);
       }
     }
   }, []);
 
   useEffect(() => {
-    if (!destination) return;
-    runPlanner();
+    if (destination) runPlanner();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [destination]);
 
+  /* ----------------------
+     Main planner runner
+  ---------------------- */
   async function runPlanner() {
     setLoading(true);
     setContextLoading(true);
     setError("");
     setVerdict(null);
-    setRankedOptions([]);
+    setRanked([]);
     try {
-      // fetch context & transport in parallel
+      // parallel fetch
       const [
         nudgesRes,
         eventsRes,
@@ -85,7 +92,8 @@ export default function Plan() {
         trainsRes,
         busesRes,
         cabsRes,
-      ] = await Promise.all([
+        trendRes,
+      ] = await Promise.allSettled([
         fetch("/api/mockNudges"),
         fetch("/api/mockEvents"),
         fetch("/api/mockHotPlaces"),
@@ -94,146 +102,255 @@ export default function Plan() {
         fetch("/api/mockTrains"),
         fetch("/api/mockBuses"),
         fetch("/api/mockCabs"),
+        fetch("/api/mockPriceTrends"),
       ]);
 
-      const [nudgesData, eventsData, hotData, reviewsData, flightsData, trainsData, busesData, cabsData] =
-        await Promise.all([
-          nudgesRes.ok ? nudgesRes.json() : [],
-          eventsRes.ok ? eventsRes.json() : [],
-          hotRes.ok ? hotRes.json() : [],
-          reviewsRes.ok ? reviewsRes.json() : [],
-          flightsRes.ok ? flightsRes.json() : [],
-          trainsRes.ok ? trainsRes.json() : [],
-          busesRes.ok ? busesRes.json() : [],
-          cabsRes.ok ? cabsRes.json() : [],
-        ]);
+      const nudgesData = nudgesRes.status === "fulfilled" && nudgesRes.value.ok ? await nudgesRes.value.json() : [];
+      const eventsData = eventsRes.status === "fulfilled" && eventsRes.value.ok ? await eventsRes.value.json() : [];
+      const hotData = hotRes.status === "fulfilled" && hotRes.value.ok ? await hotRes.value.json() : [];
+      const reviewsData = reviewsRes.status === "fulfilled" && reviewsRes.value.ok ? await reviewsRes.value.json() : [];
 
+      const flightsData = flightsRes.status === "fulfilled" && flightsRes.value.ok ? await flightsRes.value.json() : [];
+      const trainsData = trainsRes.status === "fulfilled" && trainsRes.value.ok ? await trainsRes.value.json() : [];
+      const busesData = busesRes.status === "fulfilled" && busesRes.value.ok ? await busesRes.value.json() : [];
+      const cabsData = cabsRes.status === "fulfilled" && cabsRes.value.ok ? await cabsRes.value.json() : [];
+
+      let trendData = [];
+      if (trendRes.status === "fulfilled" && trendRes.value.ok) {
+        trendData = await trendRes.value.json();
+      } else {
+        // fallback: synthesize 7-day priceIndex, weatherRisk and eventRisk
+        trendData = synthesizeTrend(destination, eventsData, nudgesData);
+      }
+
+      // set state
       setNudges(nudgesData || []);
       setEvents(eventsData || []);
       setHotPlaces(hotData || []);
       setReviews(reviewsData || []);
 
-      // pick top items from each transport (mock APIs often return array)
       setFlight((flightsData && flightsData[0]) || null);
       setTrain((trainsData && trainsData[0]) || null);
       setBus((busesData && busesData[0]) || null);
       setCab((cabsData && cabsData[0]) || null);
 
+      // compute timeline scores
+      const timelineWithScores = computeTimelineScores(trendData, eventsData, nudgesData);
+      setTimeline(timelineWithScores);
+      setSelectedDay(timelineWithScores[0] || null);
+
       setContextLoading(false);
 
-      // compute context insights for the chosen destination
-      const insight = buildContextInsight({
+      // context insight & verdict
+      const insight = buildVerdict({
         destination,
-        nudges: nudgesData || [],
-        events: eventsData || [],
-        hotPlaces: hotData || [],
-        reviews: reviewsData || [],
+        nudges: nudgesData,
+        events: eventsData,
+        hotPlaces: hotData,
+        reviews: reviewsData,
+        timeline: timelineWithScores,
       });
-
       setVerdict(insight);
 
-      // compute ranked transport options
-      const ranked = scoreAndRankOptions({
+      // scoring & ranking
+      const rankedOptions = scoreOptions({
         destination,
         flight: (flightsData && flightsData[0]) || null,
         train: (trainsData && trainsData[0]) || null,
         bus: (busesData && busesData[0]) || null,
         cab: (cabsData && cabsData[0]) || null,
         context: insight,
+        timelineDay: timelineWithScores[0] || null,
       });
-
-      setRankedOptions(ranked);
+      setRanked(rankedOptions);
     } catch (err) {
       console.error(err);
-      setError("Could not compute plan right now. Please try again.");
+      setError("Planner failed. Try refreshing.");
     } finally {
       setLoading(false);
     }
   }
 
-  // Build a human-friendly verdict from context
-  function buildContextInsight({ destination, nudges, events, hotPlaces, reviews }) {
-    const lowerDest = destination.toLowerCase();
+  /* ----------------------
+     Deep link = scroll + highlight
+  ---------------------- */
+  function handleJump(targetId) {
+    const map = {
+      nudges: nudgesRef.current,
+      events: eventsRef.current,
+      hot: hotRef.current,
+      reviews: reviewsRef.current,
+      timeline: timelineRef.current,
+    };
+    const el = map[targetId];
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    el.classList.add("panchi-highlight");
+    setTimeout(() => el.classList.remove("panchi-highlight"), 2200);
+  }
+
+  /* ----------------------
+     Save alert (localStorage)
+  ---------------------- */
+  function saveAlert() {
+    try {
+      const alerts = (typeof window !== "undefined" && JSON.parse(window.localStorage.getItem("panchiAlerts") || "[]")) || [];
+      alerts.push({ destination, when: new Date().toISOString(), verdict });
+      if (typeof window !== "undefined") window.localStorage.setItem("panchiAlerts", JSON.stringify(alerts));
+      setSavedAlerts(alerts);
+      toast("Saved alert — Panchi will watch this destination.");
+    } catch (e) {
+      console.error(e);
+      toast("Could not save alert.");
+    }
+  }
+
+  /* ----------------------
+     UI Helpers
+  ---------------------- */
+  function humanModeEmoji(k) {
+    if (k === "flight") return "✈️";
+    if (k === "train") return "🚆";
+    if (k === "bus") return "🚌";
+    if (k === "cab") return "🚕";
+    return "✳️";
+  }
+
+  function toast(msg) {
+    // simple quick browser toast
+    if (typeof window !== "undefined") alert(msg);
+  }
+
+  /* ----------------------
+     TIMELINE: synthesize fallback
+  ---------------------- */
+  function synthesizeTrend(dest, eventsList = [], nudgesList = []) {
+    // produce 7 days starting today
+    const res = [];
+    const now = new Date();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+      // base priceIndex random around 0.4..0.8 but influenced by hotPlaces or events
+      let priceIndex = 0.45 + Math.random() * 0.4; // 0.45..0.85
+      // if events near dest, bump price for overlapping days
+      const dayStr = d.toISOString().slice(0, 10);
+      const eventRisk = eventsList.some((ev) => ev.location && ev.location.toLowerCase().includes(dest.toLowerCase()) && ev.date === dayStr) ? 0.8 : 0;
+      // nudges with pricing type increases near term
+      const pricingNudge = nudgesList.some((n) => n.type === "pricing") ? 0.12 : 0;
+      priceIndex = Math.min(0.98, priceIndex + eventRisk * 0.25 + pricingNudge);
+      // weather risk: if nudges include weather, set moderate risk
+      const weatherRisk = nudgesList.some((n) => n.type === "weather") ? 0.4 : Math.random() * 0.25;
+      // eventRisk as binary for fallback, or low random
+      const evRisk = eventRisk || (Math.random() > 0.85 ? 0.4 : 0);
+      res.push({
+        date: d.toISOString().slice(0, 10),
+        priceIndex: Math.round(priceIndex * 100) / 100,
+        weatherRisk: Math.round(weatherRisk * 100) / 100,
+        eventRisk: Math.round(evRisk * 100) / 100,
+      });
+    }
+    return res;
+  }
+
+  /* ----------------------
+     TIMELINE compute (scoring)
+     score = (1-priceIndex)*0.5 + (1-weatherRisk)*0.3 + (1-eventRisk)*0.2
+  ---------------------- */
+  function computeTimelineScores(trendData, eventsList, nudgesList) {
+    if (!trendData || trendData.length === 0) return [];
+    const out = trendData.map((d) => {
+      const p = typeof d.priceIndex === "number" ? d.priceIndex : 0.6;
+      const w = typeof d.weatherRisk === "number" ? d.weatherRisk : 0.15;
+      const e = typeof d.eventRisk === "number" ? d.eventRisk : 0;
+      const raw = (1 - p) * 0.5 + (1 - w) * 0.3 + (1 - e) * 0.2;
+      return { ...d, score: Math.round(raw * 100) / 100 };
+    });
+    // sort days by date (they should already be)
+    return out;
+  }
+
+  /* ----------------------
+     VERDICT builder
+  ---------------------- */
+  function buildVerdict({ destination, nudges, events, hotPlaces, reviews, timeline }) {
+    const dest = destination.toLowerCase();
+    let score = 60;
+    const bullets = [];
+
+    // hot place effect
+    const hot = hotPlaces.find((h) => h.title && h.title.toLowerCase() === dest);
+    if (hot) {
+      bullets.push(`${hot.title} trending — ${hot.reason} (budget ${hot.budget}).`);
+      score += 8;
+      bullets.push("Trending implies higher demand; consider weekday or early booking.");
+      score -= 4;
+    }
+
+    // relevant nudges
     const relevantNudges = nudges.filter((n) => {
-      // Simple heuristic: check if any nudge text mentions the destination or generic alerts
       return (
-        (n.title && n.title.toLowerCase().includes(lowerDest)) ||
-        (n.detail && n.detail.toLowerCase().includes(lowerDest)) ||
-        n.type === "pricing" || // global pricing spikes could be relevant
-        n.type === "weather"
+        (n.title && n.title.toLowerCase().includes(dest)) ||
+        (n.detail && n.detail.toLowerCase().includes(dest)) ||
+        ["weather", "pricing", "traffic", "event"].includes(n.type)
       );
     });
 
-    const relevantEvents = events.filter((ev) => {
-      return ev.location && ev.location.toLowerCase().includes(lowerDest);
-    });
-
-    const hot = hotPlaces.find((h) => h.title && h.title.toLowerCase() === lowerDest);
-
-    const sampleReviews = reviews.filter((r) => r.location && r.location.toLowerCase().includes(lowerDest)).slice(0, 3);
-
-    // Score heuristics for verdict
-    let score = 50; // 0 bad — 100 great
-    const bullets = [];
-
-    // Hot place increases desirability but may indicate price spike
-    if (hot) {
-      bullets.push(`${hot.title} is trending: ${hot.reason} (budget ${hot.budget}).`);
-      score += 10;
-      // trending can increase price worry
-      bullets.push("Trending week — prices might be slightly higher than usual.");
-      score -= 6;
-    }
-
-    // Nudges: weather & pricing
     relevantNudges.forEach((n) => {
       if (n.type === "weather") {
-        bullets.push(`Weather note: ${n.title} — ${n.detail}`);
-        // weather issues reduce score
-        score -= 12;
-      }
-      if (n.type === "pricing") {
+        bullets.push(`Weather: ${n.title} — ${n.detail}`);
+        score -= 14;
+      } else if (n.type === "pricing") {
         bullets.push(`Price alert: ${n.title} — ${n.impact}`);
-        score -= 8;
-      }
-      if (n.type === "traffic") {
-        bullets.push(`Traffic advice: ${n.title} — ${n.impact}`);
-        score -= 5;
-      }
-      if (n.type === "event") {
+        score -= 10;
+      } else if (n.type === "traffic") {
+        bullets.push(`Traffic advisory: ${n.title} — ${n.impact}`);
+        score -= 6;
+      } else if (n.type === "event") {
         bullets.push(`Event notice: ${n.title} — ${n.detail}`);
         score -= 8;
       }
     });
 
-    // Events (severity heavy)
+    // relevant events
+    const relevantEvents = events.filter((ev) => ev.location && ev.location.toLowerCase().includes(dest));
     relevantEvents.forEach((ev) => {
       bullets.push(`Event: ${ev.title} on ${ev.date} — ${ev.impact}`);
       if (ev.severity === "high") score -= 18;
-      else if (ev.severity === "medium") score -= 8;
+      else if (ev.severity === "medium") score -= 9;
       else score -= 4;
     });
 
-    // Community reviews add trust
-    if (sampleReviews.length > 0) {
-      sampleReviews.forEach((rv) => {
-        bullets.push(`Traveler insight: ${rv.name} — "${rv.tip}"`);
-      });
-      score += 6;
+    // community signals (ratings & tips)
+    const relevantReviews = reviews.filter((r) => r.location && r.location.toLowerCase().includes(dest));
+    if (relevantReviews.length > 0) {
+      const avg = Math.round((relevantReviews.reduce((s, r) => s + (r.rating || 4.5), 0) / relevantReviews.length) * 10) / 10;
+      bullets.push(`Community: ${relevantReviews.length} recent notes — average rating ${avg} ⭐`);
+      // more positive -> increase score
+      score += (avg - 4.0) * 4;
     }
 
-    // clamp score
+    // timeline influence - pick best day and worst day
+    if (timeline && timeline.length > 0) {
+      const best = timeline.reduce((acc, d) => (d.score > (acc.score || -1) ? d : acc), {});
+      const worst = timeline.reduce((acc, d) => (d.score < (acc.score || 999) ? d : acc), {});
+      bullets.push(`Best upcoming day: ${formatDate(best.date)} (score ${Math.round(best.score * 100) / 100})`);
+      bullets.push(`Avoid day: ${formatDate(worst.date)} if possible.`);
+      // nudge depending on best day score
+      if (best.score < 0.45) score -= 6;
+      else score += 6;
+    }
+
+    // clamp
     if (score > 95) score = 95;
     if (score < 5) score = 5;
 
-    // Human label
+    // label
     let label = "Okay to visit";
     if (score >= 70) label = "Good to go";
-    else if (score >= 40) label = "Plan with caution";
+    else if (score >= 45) label = "Plan with caution";
     else label = "Not recommended right now";
 
-    // concise verdict summary
-    const summary = `${label} — score ${Math.round(score)} / 100.`;
+    const summary = `${label} — ${Math.round(score)} / 100`;
     return {
       score: Math.round(score),
       label,
@@ -242,308 +359,488 @@ export default function Plan() {
       relevantNudges,
       relevantEvents,
       hotPlace: hot || null,
-      sampleReviews,
+      sampleReviews: relevantReviews.slice(0, 3),
     };
   }
 
-  // Scoring & ranking transport options using context penalties
-  function scoreAndRankOptions({ destination, flight, train, bus, cab, context }) {
-    const options = [];
-    if (flight) options.push({ key: "flight", label: "Flight", data: flight });
-    if (train) options.push({ key: "train", label: "Train", data: train });
-    if (bus) options.push({ key: "bus", label: "Bus", data: bus });
-    if (cab) options.push({ key: "cab", label: "Cab", data: cab });
+  function formatDate(d) {
+    if (!d) return "";
+    const dt = new Date(d);
+    return dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  }
 
-    // Build penalties from events & nudges (simple)
-    const penalties = { flight: 0, train: 0, bus: 0, cab: 0 };
+  /* ----------------------
+     SCORING ENGINE (all in one)
+     finalScore = weighted combination (lower better)
+  ---------------------- */
+  function scoreOptions({ destination, flight, train, bus, cab, context, timelineDay }) {
+    const opts = [];
+    if (flight) opts.push({ key: "flight", label: "Flight", data: flight });
+    if (train) opts.push({ key: "train", label: "Train", data: train });
+    if (bus) opts.push({ key: "bus", label: "Bus", data: bus });
+    if (cab) opts.push({ key: "cab", label: "Cab", data: cab });
 
-    // If there's high severity event in dest, penalize cabs heavily and flights moderately
-    (context.relevantEvents || []).forEach((ev) => {
-      if (ev.severity === "high") {
-        penalties.cab += 30;
-        penalties.flight += 10;
-        penalties.bus += 12;
-      } else if (ev.severity === "medium") {
-        penalties.cab += 14;
-        penalties.bus += 8;
-        penalties.flight += 5;
-      } else {
-        penalties.cab += 6;
-      }
-    });
-
-    // Nudges: pricing -> penalize flights if surge; traffic -> penalize cabs
-    (context.relevantNudges || []).forEach((n) => {
-      if (n.type === "pricing") {
-        penalties.flight += 12;
-      }
-      if (n.type === "traffic") {
-        penalties.cab += 14;
-      }
-      if (n.type === "weather") {
-        // heavy weather penalizes buses and cabs
-        penalties.bus += 10;
-        penalties.cab += 8;
-      }
-      if (n.type === "event") {
-        penalties.cab += 10;
-      }
-    });
-
-    // Convert transports to scored array
-    const priced = options.map((o) => {
-      const price = o.data.price != null ? o.data.price : 999999;
-      const durationMin = parseDurationToMinutes(o.data.duration || "");
+    // simple arrays to compute min/max
+    const priced = opts.map((o) => {
+      const price = o.data && typeof o.data.price === "number" ? o.data.price : 999999;
+      const durationMin = parseDuration(o.data && o.data.duration ? o.data.duration : "");
       return { ...o, price, durationMin };
     });
 
-    // normalize price/duration
-    const prices = priced.map((p) => p.price);
-    const durs = priced.map((p) => p.durationMin);
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
-    const minDur = Math.min(...durs);
-    const maxDur = Math.max(...durs);
+    const minPrice = Math.min(...priced.map((p) => p.price));
+    const maxPrice = Math.max(...priced.map((p) => p.price));
+    const minDur = Math.min(...priced.map((p) => p.durationMin));
+    const maxDur = Math.max(...priced.map((p) => p.durationMin));
 
-    const norm = (v, mn, mx) => {
-      if (mx === mn) return 0;
-      return (v - mn) / (mx - mn);
-    };
+    // derive context components
+    const eventPenalties = {}; // per mode
+    const weatherRisk = deriveWeatherRisk(context.relevantNudges || [], context.relevantEvents || []);
+    const communityPenalty = deriveCommunityPenalty(context.sampleReviews || [], context);
 
-    const scored = priced.map((p) => {
-      const priceScore = norm(p.price, minPrice, maxPrice) * 100; // lower better
-      const durScore = norm(p.durationMin, minDur, maxDur) * 100;
-      // weights: price 0.6, duration 0.3, comfort/context 0.1
-      const base = priceScore * 0.6 + durScore * 0.3;
-      const pen = penalties[p.key] || 0;
-      // apply user's context overall risk (if verdict low, increase penalty)
-      const contextRiskPenalty = Math.max(0, 50 - (context.score || 50)) * 0.2;
-      const final = base + pen + contextRiskPenalty;
-      return { ...p, priceScore, durScore, baseScore: base, penalty: pen, contextRiskPenalty, finalScore: final };
+    priced.forEach((p) => {
+      eventPenalties[p.key] = 0;
     });
 
-    // sort ascending (lower finalScore = better)
-    scored.sort((a, b) => a.finalScore - b.finalScore);
-    return scored;
+    // compute event-driven penalties
+    (context.relevantEvents || []).forEach((ev) => {
+      const severityWeight = ev.severity === "high" ? 1 : ev.severity === "medium" ? 0.6 : 0.25;
+      // intrusive events affect cabs most, buses moderately, flights moderately
+      if (eventPenalties.cab !== undefined) eventPenalties.cab += 30 * severityWeight;
+      if (eventPenalties.bus !== undefined) eventPenalties.bus += 12 * severityWeight;
+      if (eventPenalties.flight !== undefined) eventPenalties.flight += 10 * severityWeight;
+      if (eventPenalties.train !== undefined) eventPenalties.train += 4 * severityWeight;
+    });
+
+    // nudge-driven penalties (traffic/pricing/weather)
+    (context.relevantNudges || []).forEach((n) => {
+      if (n.type === "pricing") {
+        if (eventPenalties.flight !== undefined) eventPenalties.flight += 12;
+      }
+      if (n.type === "traffic") {
+        if (eventPenalties.cab !== undefined) eventPenalties.cab += 14;
+      }
+      if (n.type === "weather") {
+        if (eventPenalties.bus !== undefined) eventPenalties.bus += 10;
+        if (eventPenalties.cab !== undefined) eventPenalties.cab += 8;
+      }
+    });
+
+    // timelineDay trend penalty (if selected day has low score)
+    const timelinePenaltyFactor = timelineDay ? Math.max(0, (0.6 - timelineDay.score)) * 30 : 0; // if score < 0.6, penalize
+
+    // scoring weights (final lower means better)
+    // price: 0.45, duration: 0.20, events/weather/community/trend combined: 0.35
+    const results = priced.map((p) => {
+      const priceComp = normalize(p.price, minPrice, maxPrice); // 0..1
+      const durComp = normalize(p.durationMin, minDur, maxDur);
+      const priceScore = priceComp * 100;
+      const durScore = durComp * 100;
+
+      const eventPenalty = eventPenalties[p.key] || 0;
+      const weatherPenalty = (weatherRisk || 0) * 40; // scaled
+      const communityComp = communityPenalty; // 0..30 (higher = worse)
+      const trendPenalty = timelinePenaltyFactor * (p.key === "flight" ? 0.9 : p.key === "cab" ? 0.8 : 0.6);
+
+      const combinedPenalty = eventPenalty + weatherPenalty + communityComp + trendPenalty;
+
+      const final =
+        priceScore * 0.45 + // price weighted
+        durScore * 0.2 + // duration
+        combinedPenalty * 0.35; // context penalties
+
+      return {
+        ...p,
+        priceScore,
+        durScore,
+        eventPenalty,
+        weatherPenalty,
+        communityComp,
+        trendPenalty,
+        finalScore: Math.round(final * 100) / 100,
+      };
+    });
+
+    // sort ascending
+    results.sort((a, b) => a.finalScore - b.finalScore);
+    return results;
   }
 
-  function parseDurationToMinutes(dur) {
-    // Accept formats like "2h 30m", "4h", "180m" etc.
-    if (!dur) return 24 * 60;
-    const hMatch = dur.match(/(\d+)\s*h/);
-    const mMatch = dur.match(/(\d+)\s*m/);
+  function parseDuration(str) {
+    if (!str) return 24 * 60;
+    const h = (str.match(/(\d+)\s*h/) || [])[1];
+    const m = (str.match(/(\d+)\s*m/) || [])[1];
     let total = 0;
-    if (hMatch) total += parseInt(hMatch[1], 10) * 60;
-    if (mMatch) total += parseInt(mMatch[1], 10);
+    if (h) total += parseInt(h, 10) * 60;
+    if (m) total += parseInt(m, 10);
     if (total === 0) {
-      const onlyMin = dur.match(/(\d+)\s*min/);
-      if (onlyMin) total = parseInt(onlyMin[1], 10);
+      const onlyMin = (str.match(/(\d+)\s*min/) || [])[1];
+      if (onlyMin) total = parseInt(onlyMin, 10);
     }
     if (total === 0) total = 24 * 60;
     return total;
   }
 
-  // Save alert to localStorage
-  function saveAlert() {
-    try {
-      const alerts = (typeof window !== "undefined" && JSON.parse(window.localStorage.getItem("panchiAlerts") || "[]")) || [];
-      alerts.push({ destination, when: new Date().toISOString(), verdict });
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("panchiAlerts", JSON.stringify(alerts));
-        setSavedAlerts(alerts);
-      }
-      alert("Alert saved — Panchi will watch this destination for you.");
-    } catch (e) {
-      console.error(e);
-      alert("Could not save alert.");
-    }
+  function normalize(val, mn, mx) {
+    if (mx === mn) return 0;
+    return (val - mn) / (mx - mn);
   }
 
-  function humanModeEmoji(key) {
-    if (key === "flight") return "✈️";
-    if (key === "train") return "🚆";
-    if (key === "bus") return "🚌";
-    if (key === "cab") return "🚕";
-    return "✳️";
+  function deriveWeatherRisk(nudgesArr, eventsArr) {
+    // quick heuristic: if any weather nudge exists, return 0.6, else if events heavy and season=monsoon maybe 0.5
+    if ((nudgesArr || []).some((n) => n.type === "weather")) return 0.6;
+    if ((eventsArr || []).some((e) => e.severity === "high")) return 0.35;
+    return 0.12;
   }
 
+  function deriveCommunityPenalty(sampleReviews, context) {
+    // average rating effect
+    if (!sampleReviews || sampleReviews.length === 0) return 8; // baseline
+    const avg = sampleReviews.reduce((s, r) => s + (r.rating || 4.5), 0) / sampleReviews.length;
+    // 5-star => small penalty, 3-star => big penalty
+    return Math.max(0, (5 - avg) * 6); // 0..12
+  }
+
+  /* ----------------------
+     UI Rendering
+  ---------------------- */
   return (
-    <main style={{ fontFamily: "Poppins, system-ui, sans-serif", minHeight: "100vh", padding: 24, background: "linear-gradient(135deg,#1E90FF 0%,#FF6F61 50%,#32CD32 100%)" }}>
-      <div style={{ maxWidth: 980, margin: "0 auto", background: "rgba(255,255,255,0.95)", borderRadius: 20, padding: 20, boxShadow: "0 18px 45px rgba(0,0,0,0.18)" }}>
-        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <a href="/" style={{ textDecoration: "none", fontSize: 20, color: "#1E90FF" }}>◀︎</a>
-            <img src="/panchi-logo.png" alt="Panchi" style={{ height: 46 }} />
-            <div style={{ marginLeft: 8, fontSize: 13, opacity: 0.8 }}>AI Planner · Context-first</div>
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <a href="/waitlist" style={{ color: "#1E90FF", textDecoration: "none", fontSize: 13 }}>Join waitlist</a>
-            <button onClick={runPlanner} style={{ padding: "8px 12px", borderRadius: 999, border: "none", background: "linear-gradient(135deg,#1E90FF 0%,#FF6F61 50%)", color: "#fff", cursor: "pointer" }}>Refresh</button>
-          </div>
-        </header>
-
-        <h1 style={{ fontSize: 22, marginBottom: 6 }}>Panchi Planner — {destination}</h1>
-        <p style={{ color: "#333", marginBottom: 14 }}>Before we show travel options, here’s what Panchi sees right now for <strong>{destination}</strong>.</p>
-
-        {contextLoading && <div style={{ padding: 12, borderRadius: 12, background: "#fff8", marginBottom: 12 }}>Loading context & signals…</div>}
-        {error && <div style={{ padding: 12, borderRadius: 12, background: "#FFF4F4", color: "#B00020", marginBottom: 12 }}>{error}</div>}
-
-        {/* VERDICT CARD */}
-        {verdict && (
-          <div style={{ marginBottom: 14, padding: 16, borderRadius: 16, background: "linear-gradient(135deg,#1E90FF 0%,#32CD32 100%)", color: "#fff" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 12, textTransform: "uppercase", opacity: 0.95 }}>Panchi verdict</div>
-                <div style={{ fontSize: 20, fontWeight: 700, marginTop: 6 }}>{verdict.label} · {verdict.score}/100</div>
-                <div style={{ fontSize: 13, marginTop: 6 }}>{verdict.summary}</div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <button onClick={saveAlert} style={{ padding: "8px 12px", borderRadius: 999, border: "none", background: "rgba(255,255,255,0.12)", color: "#fff", cursor: "pointer" }}>Save alert</button>
-              </div>
+    <>
+      <style>{pageCss}</style>
+      <main className="page">
+        <div className="container">
+          <header className="header">
+            <div className="left">
+              <a className="back" href="/">
+                ◀
+              </a>
+              <img src="/panchi-logo.png" alt="Panchi" className="logo" />
+              <div className="subtitle">AI Planner · Context-first</div>
             </div>
 
-            <div style={{ marginTop: 12, display: "grid", gap: 6 }}>
-              {verdict.bullets.slice(0, 5).map((b, idx) => (
-                <div key={idx} style={{ fontSize: 13, opacity: 0.95 }}>• {b}</div>
-              ))}
-              {verdict.bullets.length > 5 && <div style={{ fontSize: 12, opacity: 0.8 }}>+ more insights in detailed view</div>}
+            <div className="right">
+              <a className="link" href="/waitlist">
+                Join waitlist
+              </a>
+              <button className="btn" onClick={runPlanner}>
+                Refresh
+              </button>
             </div>
-          </div>
-        )}
+          </header>
 
-        {/* TRANSPORT OPTIONS (ranked) */}
-        <section style={{ marginBottom: 18 }}>
-          <h3 style={{ marginBottom: 10 }}>Recommended travel options</h3>
-          {loading && <div style={{ padding: 12, borderRadius: 12, background: "#fff8" }}>Scoring transport options…</div>}
+          <h1 className="title">Panchi Planner — {destination}</h1>
+          <p className="desc">Panchi scans weather, events, prices & community to tell you if it’s a good time to go — then recommends the best mode.</p>
 
-          {!loading && rankedOptions.length === 0 && <div style={{ padding: 12, borderRadius: 12, background: "#fff8" }}>No options available right now.</div>}
+          {contextLoading && <div className="mutedBox">Loading context & signals…</div>}
+          {error && <div className="errorBox">{error}</div>}
 
-          {!loading && rankedOptions.length > 0 && (
-            <div style={{ display: "grid", gap: 12 }}>
-              {rankedOptions.map((opt, idx) => (
-                <div key={opt.key} style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  padding: 12,
-                  borderRadius: 12,
-                  background: idx === 0 ? "linear-gradient(135deg,#32CD32 0%,#1E90FF 60%)" : "#fff",
-                  color: idx === 0 ? "#fff" : "#111",
-                  alignItems: "center",
-                  boxShadow: "0 8px 20px rgba(0,0,0,0.06)"
-                }}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                    <div style={{ fontSize: 22 }}>{humanModeEmoji(opt.key)}</div>
-                    <div>
-                      <div style={{ fontSize: 15, fontWeight: 700 }}>{opt.label} · ₹{opt.price}</div>
-                      <div style={{ fontSize: 13, opacity: idx === 0 ? 0.95 : 0.7 }}>
-                        {opt.data?.depart || ""} → {opt.data?.arrive || ""} · {opt.data?.duration || `${opt.durationMin} min`}
+          {/* VERDICT */}
+          {verdict && (
+            <section className="verdict">
+              <div className="verdictLeft">
+                <div className="verdictHeadline">
+                  <div className="tag">Panchi verdict</div>
+                  <div className="score">{verdict.score}/100</div>
+                </div>
+                <div className="verdictTitle">{verdict.label}</div>
+                <div className="verdictSummary">{verdict.summary}</div>
+              </div>
+
+              <div className="verdictRight">
+                <button className="saveBtn" onClick={saveAlert}>
+                  Save alert
+                </button>
+              </div>
+
+              <div className="verdictBullets">
+                {verdict.bullets.map((b, i) => {
+                  // basic heuristics to map bullet to section
+                  const lower = b.toLowerCase();
+                  let target = "nudges";
+                  if (lower.includes("event") || lower.includes("festival") || lower.includes("ipl") || lower.includes("visarjan")) target = "events";
+                  else if (lower.includes("weather") || lower.includes("rain")) target = "nudges";
+                  else if (lower.includes("best upcoming day") || lower.includes("avoid day")) target = "timeline";
+                  else if (lower.includes("community")) target = "reviews";
+                  return (
+                    <button key={i} className="bullet" onClick={() => handleJump(target)}>
+                      • {b}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* TIMELINE */}
+          <section ref={timelineRef} id="timeline-section" className="timelineSection">
+            <div className="sectionHeader">
+              <h3>📅 Best days to travel (7-day view)</h3>
+              <div className="tiny">Click a day to bias recommendations</div>
+            </div>
+
+            <div className="timelineRow">
+              {timeline && timeline.length > 0 ? (
+                timeline.map((d) => {
+                  const color = d.score >= 0.75 ? "good" : d.score >= 0.5 ? "ok" : "bad";
+                  return (
+                    <div
+                      key={d.date}
+                      className={`dayPill ${color} ${selectedDay && selectedDay.date === d.date ? "active" : ""}`}
+                      onClick={() => {
+                        setSelectedDay(d);
+                        // re-rank with selected day bias
+                        const newRanked = scoreOptions({
+                          destination,
+                          flight,
+                          train,
+                          bus,
+                          cab,
+                          context: verdict,
+                          timelineDay: d,
+                        });
+                        setRanked(newRanked);
+                        // scroll to results
+                        setTimeout(() => {
+                          const el = document.getElementById("results-section");
+                          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }, 300);
+                      }}
+                    >
+                      <div className="dayLabel">{new Date(d.date).toLocaleDateString(undefined, { weekday: "short" })}</div>
+                      <div className="dayDate">{new Date(d.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</div>
+                      <div className="dayEmoji">{d.weatherRisk > 0.6 ? "🌧️" : d.eventRisk > 0.4 ? "🎉" : "☀️"}</div>
+                      <div className="dayScore">{Math.round(d.score * 100)}</div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="mutedBox">Timeline unavailable</div>
+              )}
+            </div>
+          </section>
+
+          {/* SIGNALS: Nudges / Events / Hot / Reviews */}
+          <section className="signals">
+            <div className="grid">
+              <div ref={nudgesRef} id="nudges-section" className="card">
+                <h4>Nudges & alerts</h4>
+                <div className="miniGrid">
+                  {(nudges || []).slice(0, 6).map((n) => (
+                    <div key={n.id} className="nudge">
+                      <div className="nudgeIcon">{n.icon}</div>
+                      <div className="nudgeBody">
+                        <div className="nudgeTitle">{n.title}</div>
+                        <div className="nudgeDetail">{n.detail}</div>
+                        <div className="nudgeImpact">{n.impact}</div>
                       </div>
                     </div>
+                  ))}
+                  {(nudges || []).length === 0 && <div className="mutedBox">No nudges</div>}
+                </div>
+              </div>
+
+              <div ref={eventsRef} id="events-section" className="card">
+                <h4>Events & crowd alerts</h4>
+                {(events || []).length === 0 && <div className="mutedBox">No events</div>}
+                <div style={{ display: "grid", gap: 10 }}>
+                  {(events || []).map((ev) => (
+                    <div className="event" key={ev.id}>
+                      <div className={`severity ${ev.severity}`}>{ev.severity.toUpperCase()}</div>
+                      <div className="eventBody">
+                        <div className="eventTitle">{ev.title}</div>
+                        <div className="eventMeta">{ev.location} · {ev.date}</div>
+                        <div className="eventImpact">{ev.impact}</div>
+                        <div className="eventAction">Panchi: {ev.recommendedAction}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div ref={hotRef} id="hot-section" className="card">
+                <h4>Hot places</h4>
+                {(hotPlaces || []).length === 0 && <div className="mutedBox">No trending data</div>}
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {(hotPlaces || []).slice(0, 6).map((h) => (
+                    <div key={h.id} className="hotCard">
+                      <div className="hotEmoji">{h.emoji}</div>
+                      <div>
+                        <div className="hotTitle">{h.title}</div>
+                        <div className="hotReason">{h.reason}</div>
+                        <div className="hotBudget">Budget {h.budget}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div ref={reviewsRef} id="reviews-section" className="card">
+                <h4>Community notes</h4>
+                {(reviews || []).length === 0 && <div className="mutedBox">No community reviews</div>}
+                <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 6 }}>
+                  {(reviews || []).slice(0, 8).map((r) => (
+                    <div className="review" key={r.id}>
+                      <div className="revHeader">{r.name} · {r.rating} ⭐</div>
+                      <div className="revLoc">{r.location} {r.emoji}</div>
+                      <div className="revText">{r.review}</div>
+                      <div className="revTip">Tip: {r.tip}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* RANKED RESULTS */}
+          <section id="results-section" className="results">
+            <h3>Recommended options</h3>
+            {loading && <div className="mutedBox">Scoring options...</div>}
+            {!loading && ranked.length === 0 && <div className="mutedBox">No travel options available</div>}
+            <div style={{ display: "grid", gap: 12 }}>
+              {ranked.map((r, i) => (
+                <div key={r.key} className={`resultCard ${i === 0 ? "recommended" : ""}`}>
+                  <div className="left">
+                    <div className="mode">{humanModeEmoji(r.key)} {r.label}</div>
+                    <div className="meta">{r.data?.depart || ""} → {r.data?.arrive || ""} · {r.data?.duration || `${r.durationMin} min`}</div>
                   </div>
 
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 13, opacity: idx === 0 ? 0.95 : 0.7 }}>Score {Math.round(opt.finalScore)}</div>
-                    <div style={{ marginTop: 6 }}>
-                      <button onClick={() => alert(`Proceed to book / view ${opt.label} — mock`) } style={{
-                        padding: "8px 12px",
-                        borderRadius: 999,
-                        border: "none",
-                        background: idx === 0 ? "rgba(255,255,255,0.14)" : "linear-gradient(135deg,#1E90FF 0%,#FF6F61 50%)",
-                        color: idx === 0 ? "#fff" : "#fff",
-                        cursor: "pointer"
-                      }}>
-                        {idx === 0 ? "Recommended" : "View"}
-                      </button>
+                  <div className="right">
+                    <div className="price">₹{r.price}</div>
+                    <div className="scoreBreakdown">Score: {Math.round(r.finalScore)}</div>
+                    <div className="btnRow">
+                      <button className="viewBtn" onClick={() => alert(`mock: view ${r.label}`)}>{i === 0 ? "Recommended" : "View"}</button>
                     </div>
-
-                    <div style={{ fontSize: 11, opacity: 0.85, marginTop: 8 }}>
-                      Penalty: {Math.round(opt.penalty || 0)} · Time penalty: {Math.round(opt.contextRiskPenalty || 0)}
+                    <div className="explain">
+                      <small>penalty: {Math.round(r.eventPenalty || 0)} · weather: {Math.round(r.weatherPenalty || 0)} · comm: {Math.round(r.communityComp || 0)}</small>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-          )}
-        </section>
+          </section>
 
-        {/* Transparency: show nudges & events considered */}
-        <section style={{ marginBottom: 18 }}>
-          <h4 style={{ marginBottom: 8 }}>Signals Panchi looked at</h4>
-          <div style={{ display: "grid", gap: 12 }}>
-            {nudges.length > 0 && (
-              <div style={{ padding: 12, borderRadius: 12, background: "#fff" }}>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>Nudges</div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {nudges.slice(0, 4).map((n) => (
-                    <div key={n.id} style={{ padding: "8px 10px", borderRadius: 999, background: "rgba(30,144,255,0.06)", fontSize: 12 }}>
-                      {n.icon} {n.title}
-                    </div>
-                  ))}
-                </div>
+          {/* SAVED ALERTS */}
+          <section className="alerts">
+            <h4>Saved alerts</h4>
+            {savedAlerts && savedAlerts.length === 0 && <div className="mutedBox">No saved alerts</div>}
+            {savedAlerts && savedAlerts.length > 0 && (
+              <div style={{ display: "grid", gap: 8 }}>
+                {savedAlerts.map((a, idx) => (
+                  <div key={idx} className="alertCard">{a.destination} · saved {new Date(a.when).toLocaleString()} · {a.verdict?.summary || ""}</div>
+                ))}
               </div>
             )}
-
-            {events.length > 0 && (
-              <div style={{ padding: 12, borderRadius: 12, background: "#fff" }}>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>Events</div>
-                <div style={{ display: "grid", gap: 8 }}>
-                  {events.map((ev) => (
-                    <div key={ev.id} style={{ fontSize: 13 }}>
-                      • <strong>{ev.title}</strong> — {ev.location} ({ev.date}) — {ev.impact}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {hotPlaces.length > 0 && (
-              <div style={{ padding: 12, borderRadius: 12, background: "#fff" }}>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>Trending</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {hotPlaces.slice(0, 4).map((hp) => (
-                    <div key={hp.id} style={{ padding: "8px 10px", borderRadius: 12, background: "rgba(255,235,205,0.8)", fontSize: 13 }}>
-                      {hp.emoji} {hp.title} · {hp.trend}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Community excerpts */}
-        <section>
-          <h4 style={{ marginBottom: 10 }}>Community insights</h4>
-          {reviews.length === 0 && <div style={{ padding: 12, borderRadius: 12, background: "#fff" }}>No community inputs for this destination yet.</div>}
-          {reviews.length > 0 && (
-            <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>
-              {reviews.slice(0, 6).map((r) => (
-                <div key={r.id} style={{ minWidth: 220, padding: 12, borderRadius: 12, background: "#fff", border: "1px solid rgba(0,0,0,0.04)" }}>
-                  <div style={{ fontWeight: 700 }}>{r.name} · {r.emoji}</div>
-                  <div style={{ fontSize: 13, opacity: 0.85, marginTop: 6 }}>{r.review}</div>
-                  <div style={{ fontSize: 12, opacity: 0.75, marginTop: 8 }}>Tip: {r.tip}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Saved alerts quick view */}
-        <section style={{ marginTop: 18 }}>
-          <h4 style={{ marginBottom: 8 }}>Saved alerts</h4>
-          {savedAlerts.length === 0 && <div style={{ padding: 10, borderRadius: 8, background: "#fff" }}>No saved alerts yet — click “Save alert” on the verdict card to watch a destination.</div>}
-          {savedAlerts.length > 0 && (
-            <div style={{ display: "grid", gap: 8 }}>
-              {savedAlerts.map((a, i) => (
-                <div key={i} style={{ padding: 10, borderRadius: 8, background: "#fff", fontSize: 13 }}>
-                  {a.destination} — saved {new Date(a.when).toLocaleString()} · {a.verdict?.summary || ""}
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
-    </main>
+          </section>
+        </div>
+      </main>
+    </>
   );
 }
+
+/* ----------------------
+   CSS (inline)
+   - premium gradient
+   - responsive
+---------------------- */
+const pageCss = `
+:root{
+  --bg1:#0f1724;
+  --grad1: linear-gradient(135deg, #0ea5e9 0%, #7c3aed 50%, #ff7a59 100%);
+  --card-bg: rgba(255,255,255,0.98);
+}
+*{box-sizing:border-box;font-family:Inter, Poppins, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
+body,html,#__next{margin:0;padding:0;background:radial-gradient(1200px 400px at 10% 10%, rgba(124,58,237,0.06), transparent), linear-gradient(180deg, rgba(14,165,233,0.02), rgba(255,255,255,0.02));}
+.page{padding:28px 18px 80px;}
+.container{max-width:1100px;margin:0 auto;background:var(--card-bg);border-radius:18px;padding:22px;box-shadow:0 20px 60px rgba(16,24,40,0.12);}
+
+/* header */
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px}
+.header .left{display:flex;align-items:center;gap:12px}
+.back{font-size:20px;color:#0f1724;text-decoration:none}
+.logo{height:56px}
+.subtitle{font-size:13px;color:rgba(15,23,36,0.6)}
+.header .right{display:flex;gap:10px;align-items:center}
+.link{color:#7c3aed;text-decoration:none;font-weight:600}
+.btn{background:linear-gradient(90deg,#7c3aed,#ff7a59);color:white;border:none;padding:10px 12px;border-radius:12px;cursor:pointer;font-weight:700}
+
+/* titles */
+.title{font-size:22px;margin:6px 0 6px}
+.desc{color:rgba(15,23,36,0.7);margin-bottom:10px}
+
+/* muted / error */
+.mutedBox{padding:10px;border-radius:12px;background:linear-gradient(90deg, rgba(2,6,23,0.03), rgba(2,6,23,0.02));color:rgba(2,6,23,0.6)}
+.errorBox{padding:10px;border-radius:12px;background:#FFF4F4;color:#B00020}
+
+/* verdict */
+.verdict{display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:14px;background:linear-gradient(90deg,#0ea5e9 0%, #7c3aed 50%, #ff7a59 100%);color:white;margin-bottom:18px}
+.verdictHeadline{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.tag{font-size:12px;opacity:0.95;text-transform:uppercase}
+.score{font-size:20px;font-weight:800}
+.verdictTitle{font-size:18px;font-weight:800;margin-top:4px}
+.verdictSummary{opacity:0.95}
+.saveBtn{background:rgba(255,255,255,0.12);border:none;color:white;padding:10px 12px;border-radius:12px;cursor:pointer}
+.verdictBullets{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.bullet{background:transparent;border:none;color:white;text-align:left;padding:6px 0;cursor:pointer;font-size:13px}
+
+/* timeline */
+.timelineSection{margin-bottom:16px}
+.sectionHeader{display:flex;justify-content:space-between;align-items:center}
+.timelineRow{display:flex;gap:10px;overflow:auto;padding:12px 0}
+.dayPill{min-width:110px;border-radius:12px;padding:10px;background:linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,255,255,0.92));box-shadow:0 8px 20px rgba(16,24,40,0.06);cursor:pointer;display:flex;flex-direction:column;gap:4px;align-items:center}
+.dayPill.good{border:2px solid #10b981}
+.dayPill.ok{border:2px solid #f59e0b}
+.dayPill.bad{border:2px solid #ef4444}
+.dayPill.active{transform:translateY(-6px);box-shadow:0 20px 40px rgba(2,6,23,0.12)}
+.dayLabel{font-size:13px;font-weight:700}
+.dayDate{font-size:12px;color:rgba(2,6,23,0.6)}
+.dayEmoji{font-size:18px}
+.dayScore{font-weight:800;margin-top:6px}
+
+/* signals grid */
+.signals{margin-bottom:18px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.card{padding:12px;border-radius:12px;background:white;box-shadow:0 8px 18px rgba(2,6,23,0.04)}
+.miniGrid{display:flex;flex-direction:column;gap:8px}
+.nudge{display:flex;gap:8px;align-items:flex-start}
+.nudgeIcon{font-size:20px}
+.nudgeTitle{font-weight:700}
+.nudgeDetail{font-size:13px;color:rgba(2,6,23,0.7)}
+.nudgeImpact{font-size:12px;color:#ff4d4d}
+.event{display:flex;gap:10px;align-items:flex-start;border-radius:8px;padding:8px;background:linear-gradient(180deg,#fff,#fafafa)}
+.event .severity{font-weight:800;padding:6px;border-radius:8px;background:rgba(0,0,0,0.05)}
+.eventBody{flex:1}
+.hotCard{display:flex;gap:8px;align-items:center;padding:8px;border-radius:10px;background:linear-gradient(180deg,rgba(14,165,233,0.06),rgba(124,58,237,0.04))}
+.hotEmoji{font-size:22px}
+.review{min-width:220px;border-radius:10px;padding:10px;background:linear-gradient(180deg,#fff,#fbfaff);box-shadow:0 6px 18px rgba(2,6,23,0.04)}
+.revHeader{font-weight:700}
+.revLoc{font-size:13px;color:rgba(2,6,23,0.6)}
+
+/* results */
+.results{margin-bottom:18px}
+.resultCard{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;border-radius:12px;background:white;box-shadow:0 10px 30px rgba(2,6,23,0.04)}
+.resultCard.recommended{background:linear-gradient(90deg,#10b981,#0ea5e9);color:white}
+.left{display:flex;flex-direction:column}
+.mode{font-weight:800}
+.meta{font-size:13px;opacity:0.9}
+.right{text-align:right}
+.price{font-weight:900;font-size:18px}
+.scoreBreakdown{font-size:13px;color:rgba(2,6,23,0.6)}
+.btnRow{margin-top:8px}
+.viewBtn{background:linear-gradient(90deg,#7c3aed,#ff7a59);color:white;border:none;padding:8px 12px;border-radius:999px;cursor:pointer}
+.explain{margin-top:6px;font-size:11px;opacity:0.85}
+
+/* alerts */
+.alerts{margin-top:18px}
+.alertCard{padding:10px;border-radius:10px;background:linear-gradient(90deg,#fff,#fafafa)}
+
+/* highlight */
+.panchi-highlight{box-shadow:0 20px 60px rgba(124,58,237,0.12);transform:translateY(-6px);transition:all 0.28s ease}
+
+/* responsive */
+@media(max-width:880px){
+  .grid{grid-template-columns:1fr}
+  .timelineRow{gap:8px}
+  .dayPill{min-width:86px}
+}
+`;
+
+/* End of file */
