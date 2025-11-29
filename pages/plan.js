@@ -1,13 +1,12 @@
 // pages/plan.js
 import React, { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/router";
 
 /*
-  Plan page for Panchi MVP
-  - reads ?destination=...
-  - shows 7-day chips, mode tabs, nudges & events, trending cards
-  - displays mock cheapest options for selected mode and date
+  Plan page (refined visuals)
+  - Single-file replacement using styled-jsx
+  - Responsive, colorful, ripple effects, icons inline
+  - Uses mocked data arrays (same structure as earlier)
 */
 
 const MOCK_FLIGHTS = [
@@ -34,285 +33,285 @@ const NUDGES = [
   { id: 3, title: "Traffic at Delhi T3 (Evening)", body: "Allow 30–45 mins extra to reach the airport." },
 ];
 
-function getSevenDays() {
-  const out = [];
+function get7Days() {
+  const arr = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i);
-    out.push({
+    arr.push({
       iso: d.toISOString().slice(0, 10),
       label: d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit" }),
+      weekday: d.toLocaleDateString("en-US", { weekday: "short" }),
     });
   }
-  return out;
+  return arr;
 }
 
-export default function Plan() {
+export default function PlanPage() {
   const router = useRouter();
   const { destination: destQuery } = router.query || {};
   const destination = Array.isArray(destQuery) ? destQuery[0] : destQuery || "Goa";
 
   const [mode, setMode] = useState("flights"); // flights | trains | cabs
-  const [selectedDate, setSelectedDate] = useState(getSevenDays()[0].iso);
+  const [selectedDate, setSelectedDate] = useState(get7Days()[0].iso);
   const [results, setResults] = useState([]);
-  const [userName] = useState("Ethen"); // placeholder; replace with auth later
+  const [userName] = useState("Ethen");
 
-  const seven = useMemo(() => getSevenDays(), []);
+  const seven = useMemo(() => get7Days(), []);
 
   useEffect(() => {
-    // update results according to mode
     if (mode === "flights") setResults(MOCK_FLIGHTS);
     if (mode === "trains") setResults(MOCK_TRAINS);
     if (mode === "cabs") setResults(MOCK_CABS);
   }, [mode]);
 
   function handleBook(item) {
-    // placeholder booking action
-    alert(`Booking placeholder for ${item.carrier || item.name || item.label} — ₹${item.price}`);
+    // placeholder action
+    alert(`Booking placeholder → ${item.carrier || item.name || item.label} — ₹${item.price}`);
   }
 
-  function handlePlanAgain() {
-    router.push(`/`);
-  }
-
-  // small "verdict" based on example conditions (mock)
   function computeVerdict() {
-    // example simple logic:
     if (destination.toLowerCase().includes("goa")) {
-      return {
-        label: "GOOD",
-        text: "Weather looks pleasant; some weekend rain patches. Best deals arrive on weekdays.",
-      };
+      return { label: "GOOD", text: "Weather pleasant; weekend may have short showers. Best weekday deals." };
     }
-    return {
-      label: "NEUTRAL",
-      text: "Check hotels and events for local surges before booking.",
-    };
+    return { label: "NEUTRAL", text: "Check events and local transport before booking." };
   }
-
   const verdict = computeVerdict();
 
   return (
-    <div className="page-root" style={{ padding: 24 }}>
-      <div className="header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ color: "#666" }}>Hey, <strong>{userName}</strong></div>
-          <h1 style={{ margin: "6px 0 4px" }}>Where are we going next?</h1>
-          <p style={{ marginTop: 0, color: "#666" }}>
-            Panchi will find the smartest, safest and cheapest ways to reach <strong>{destination}</strong> — starting with flights in this MVP.
-          </p>
-          <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
-            <input
-              placeholder={`Try "Goa", "Manali", "Jaipur" or "beach under 5k"`}
-              value={destination}
-              readOnly
-              style={{
-                flex: 1,
-                padding: "14px 16px",
-                borderRadius: 12,
-                border: "1px solid #eee",
-                boxShadow: "0 6px 18px rgba(20,20,20,0.04)",
-                background: "#fff",
-              }}
-            />
-            <button
-              onClick={handlePlanAgain}
-              style={{
-                background: "linear-gradient(90deg,#7F5CFF 0%,#FF5CA8 100%)",
-                color: "#fff",
-                padding: "12px 18px",
-                borderRadius: 12,
-                border: "none",
-                boxShadow: "0 6px 16px rgba(127,92,255,0.18)",
-              }}
-            >
-              Let Panchi plan →
-            </button>
-          </div>
-        </div>
+    <div className="root">
+      <header className="hero">
+        <div className="hero-inner">
+          <div className="hero-left">
+            <div className="greet">Hey, <strong>{userName}</strong></div>
+            <h1 className="hero-title">Where are we going next?</h1>
+            <p className="hero-sub">Panchi finds the smartest, safest and cheapest ways to reach <strong>{destination}</strong> — starting with flights in this MVP.</p>
 
-        <div style={{ width: 180, textAlign: "right" }}>
-          <img src="/Panchi-logo.png" alt="Panchi" style={{ maxWidth: 160 }} />
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 24, marginTop: 28 }}>
-        {/* left main column */}
-        <div>
-          <div style={{ background: "#fff", borderRadius: 14, padding: 20, boxShadow: "0 8px 24px rgba(12,12,12,0.04)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <h3 style={{ margin: "0 0 6px" }}>Find the best options for {destination}</h3>
-                <div style={{ color: "#666", marginBottom: 12 }}>Panchi synthesizes price, events, weather, and community feedback to nudge you in realtime.</div>
+            <div className="hero-controls">
+              <div className="input-wrap">
+                <svg className="search-ico" viewBox="0 0 24 24" width="18" height="18" aria-hidden><path fill="#9aa0a6" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zM4 9.5C4 6.46 6.46 4 9.5 4S15 6.46 15 9.5 12.54 15 9.5 15 4 12.54 4 9.5z"/></svg>
+                <input value={destination} readOnly className="search-input" placeholder='Try "Goa", "Manali", "Jaipur" or "beach under 5k"' />
               </div>
 
-              <div style={{ textAlign: "right", color: "#666" }}>
-                <div style={{ fontSize: 13 }}>Mode: <strong>{mode}</strong></div>
-                <div style={{ marginTop: 6, fontSize: 12, color: "#999" }}>{verdict.label} — {verdict.text}</div>
+              <button className="cta" onClick={() => router.push("/")}>Let Panchi plan →</button>
+            </div>
+          </div>
+
+          <div className="hero-right">
+            {/* logo (ensure /public/panchi-logo.png exists) */}
+            <img className="logo" src="/panchi-logo.png" alt="Panchi" />
+          </div>
+        </div>
+      </header>
+
+      <main className="container">
+        <section className="left">
+          <div className="card hero-card">
+            <div className="card-head">
+              <div>
+                <h3>Find the best options for {destination}</h3>
+                <div className="muted">Panchi synthesizes price, events, weather, and community feedback to nudge you in realtime.</div>
+              </div>
+              <div className="verdict">
+                <div className="verdict-tag">{verdict.label}</div>
+                <div className="verdict-text">{verdict.text}</div>
               </div>
             </div>
 
-            {/* date chips and mode tabs */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 16, alignItems: "center" }}>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div className="controls-row">
+              <div className="chips-row" role="tablist">
                 {seven.map((d) => (
                   <button
                     key={d.iso}
-                    onClick={() => setSelectedDate(d.iso)}
-                    className={`chip ${selectedDate === d.iso ? "chip-active" : ""}`}
-                    style={{
-                      padding: "10px 14px",
-                      borderRadius: 10,
-                      border: selectedDate === d.iso ? "2px solid #7F5CFF" : "1px solid #eee",
-                      background: selectedDate === d.iso ? "#F6F0FF" : "#FAFAFB",
-                      cursor: "pointer",
+                    className={`chip ${selectedDate === d.iso ? "active" : ""}`}
+                    onClick={(e) => {
+                      const el = e.currentTarget;
+                      // ripple
+                      el.classList.remove("ripple");
+                      void el.offsetWidth;
+                      el.classList.add("ripple");
+                      setSelectedDate(d.iso);
                     }}
                   >
-                    {d.label}
+                    <div className="chip-day">{d.label}</div>
+                    <div className="chip-week">{d.weekday}</div>
+                    <span className="ripple-circle" />
                   </button>
                 ))}
               </div>
 
-              <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
-                <button
-                  onClick={() => setMode("flights")}
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: mode === "flights" ? "none" : "1px solid #eee",
-                    background: mode === "flights" ? "linear-gradient(90deg,#7F5CFF 0%,#FF5CA8 100%)" : "#fff",
-                    color: mode === "flights" ? "#fff" : "#333",
-                    boxShadow: mode === "flights" ? "0 6px 16px rgba(127,92,255,0.12)" : "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  Flights
-                </button>
-                <button
-                  onClick={() => setMode("trains")}
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: mode === "trains" ? "none" : "1px solid #eee",
-                    background: mode === "trains" ? "linear-gradient(90deg,#7F5CFF 0%,#FF5CA8 100%)" : "#fff",
-                    color: mode === "trains" ? "#fff" : "#333",
-                    cursor: "pointer",
-                  }}
-                >
-                  Trains
-                </button>
-                <button
-                  onClick={() => setMode("cabs")}
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: mode === "cabs" ? "none" : "1px solid #eee",
-                    background: mode === "cabs" ? "linear-gradient(90deg,#7F5CFF 0%,#FF5CA8 100%)" : "#fff",
-                    color: mode === "cabs" ? "#fff" : "#333",
-                    cursor: "pointer",
-                  }}
-                >
-                  Cabs
-                </button>
+              <div className="mode-tabs">
+                <button className={`mode ${mode === "flights" ? "active" : ""}`} onClick={() => setMode("flights")}>Flights</button>
+                <button className={`mode ${mode === "trains" ? "active" : ""}`} onClick={() => setMode("trains")}>Trains</button>
+                <button className={`mode ${mode === "cabs" ? "active" : ""}`} onClick={() => setMode("cabs")}>Cabs</button>
               </div>
             </div>
 
-            {/* results list */}
-            <div style={{ marginTop: 18 }}>
-              {mode === "flights" &&
-                MOCK_FLIGHTS.map((f) => (
-                  <div key={f.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 16, borderRadius: 10, background: "#FBFBFC", marginBottom: 12 }}>
-                    <div>
-                      <div style={{ fontWeight: 700 }}>{f.carrier}</div>
-                      <div style={{ color: "#666", fontSize: 13 }}>{f.depart} → {f.arrive} · {f.dur}</div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontWeight: 700 }}>₹{f.price}</div>
-                      <button onClick={() => handleBook(f)} style={{ marginTop: 8, padding: "8px 12px", borderRadius: 8, border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Book</button>
-                    </div>
+            <div className="results">
+              {mode === "flights" && MOCK_FLIGHTS.map((f) => (
+                <div key={f.id} className="result-row">
+                  <div>
+                    <div className="res-title">{f.carrier}</div>
+                    <div className="muted small">{f.depart} → {f.arrive} · {f.dur}</div>
                   </div>
-                ))}
 
-              {mode === "trains" &&
-                MOCK_TRAINS.map((t) => (
-                  <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 16, borderRadius: 10, background: "#FBFBFC", marginBottom: 12 }}>
-                    <div>
-                      <div style={{ fontWeight: 700 }}>{t.name}</div>
-                      <div style={{ color: "#666", fontSize: 13 }}>{t.dept} → {t.arr} · {t.dur}</div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontWeight: 700 }}>₹{t.price}</div>
-                      <button onClick={() => handleBook(t)} style={{ marginTop: 8, padding: "8px 12px", borderRadius: 8, border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Book</button>
-                    </div>
+                  <div className="res-right">
+                    <div className="price">₹{f.price}</div>
+                    <button className="outline" onClick={() => handleBook(f)}>Book</button>
                   </div>
-                ))}
+                </div>
+              ))}
 
-              {mode === "cabs" &&
-                MOCK_CABS.map((c) => (
-                  <div key={c.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 16, borderRadius: 10, background: "#FBFBFC", marginBottom: 12 }}>
-                    <div>
-                      <div style={{ fontWeight: 700 }}>{c.label}</div>
-                      <div style={{ color: "#666", fontSize: 13 }}>ETA: {c.eta} · Rating: ★ {c.rating}</div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontWeight: 700 }}>₹{c.price}</div>
-                      <button onClick={() => handleBook(c)} style={{ marginTop: 8, padding: "8px 12px", borderRadius: 8, border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Book</button>
-                    </div>
+              {mode === "trains" && MOCK_TRAINS.map((t) => (
+                <div key={t.id} className="result-row">
+                  <div>
+                    <div className="res-title">{t.name}</div>
+                    <div className="muted small">{t.dept} → {t.arr} · {t.dur}</div>
                   </div>
-                ))}
+
+                  <div className="res-right">
+                    <div className="price">₹{t.price}</div>
+                    <button className="outline" onClick={() => handleBook(t)}>Book</button>
+                  </div>
+                </div>
+              ))}
+
+              {mode === "cabs" && MOCK_CABS.map((c) => (
+                <div key={c.id} className="result-row">
+                  <div>
+                    <div className="res-title">{c.label}</div>
+                    <div className="muted small">ETA: {c.eta} · Rating: ★ {c.rating}</div>
+                  </div>
+
+                  <div className="res-right">
+                    <div className="price">₹{c.price}</div>
+                    <button className="outline" onClick={() => handleBook(c)}>Book</button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* events & crowd alerts */}
-          <div style={{ marginTop: 18 }}>
-            <div style={{ padding: 18, background: "#fff", borderRadius: 14, boxShadow: "0 8px 24px rgba(12,12,12,0.04)" }}>
-              <h4 style={{ marginTop: 0 }}>Events & crowd alerts</h4>
-              <div style={{ color: "#333" }}>
-                <div style={{ marginBottom: 12 }}>
-                  <strong>HIGH</strong> — Sunburn-esque EDM Festival, Vagator, Goa · 2025-12-28<br />
-                  High crowding · Hotels +30% · Cab surge likely.<br />
-                  <em>Panchi: Book hotels + cabs if attending; avoid beachfront stays if you want quiet.</em>
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <strong>HIGH</strong> — IPL Playoffs (Sample), Mumbai · 2026-05-20<br />
-                  High hotel & flight demand · Local transport crowded.<br />
-                  <em>Panchi: Book transport early and plan longer arrival buffers to stadiums.</em>
-                </div>
-              </div>
+          <div className="card events">
+            <h4>Events & crowd alerts</h4>
+            <div className="event-item">
+              <strong>HIGH</strong> — Sunburn-esque EDM Festival, Vagator, Goa · 2025-12-28<br />
+              High crowding · Hotels +30% · Cab surge likely.<br />
+              <em>Panchi: Book hotels + cabs if attending; avoid beachfront stays.</em>
+            </div>
+
+            <div className="event-item">
+              <strong>HIGH</strong> — IPL Playoffs (sample), Mumbai · 2026-05-20<br />
+              High demand · local transport crowded.<br />
+              <em>Panchi: Plan arrival buffers for stadiums.</em>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* right sidebar */}
-        <aside>
-          <div style={{ position: "sticky", top: 24 }}>
-            <div style={{ background: "#fff", padding: 18, borderRadius: 14, boxShadow: "0 8px 24px rgba(12,12,12,0.04)" }}>
-              <h5 style={{ marginTop: 0 }}>Nudges & alerts</h5>
-              <div>
-                {NUDGES.map((n) => (
-                  <div key={n.id} style={{ display: "flex", gap: 10, marginBottom: 12 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 8, background: "#F4F7FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      ⚠️
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700 }}>{n.title}</div>
-                      <div style={{ color: "#666", fontSize: 13 }}>{n.body}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ marginTop: 12 }}>
-                <h6 style={{ marginBottom: 8 }}>Community quick takes</h6>
-                <div style={{ color: "#666", fontSize: 13 }}>
-                  <div style={{ marginBottom: 6 }}><strong>Asha</strong> — "Loved morning at Baga, crowd manageable."</div>
-                  <div><strong>Rajan</strong> — "Road diversions in festival season; allow extra time."</div>
+        <aside className="right">
+          <div className="card nudges">
+            <h4>Nudges & alerts</h4>
+            {NUDGES.map((n) => (
+              <div key={n.id} className="nudge">
+                <div className="nudge-ico">⚠️</div>
+                <div>
+                  <div className="nudge-title">{n.title}</div>
+                  <div className="muted small">{n.body}</div>
                 </div>
               </div>
+            ))}
+
+            <div className="community">
+              <h5>Community quick takes</h5>
+              <div className="muted small">Asha — "Loved morning at Baga, crowd manageable."</div>
+              <div className="muted small">Rajan — "Road diversions in festival season; allow time."</div>
             </div>
           </div>
         </aside>
-      </div>
+      </main>
+
+      <style jsx>{`
+        :root{
+          --card-bg: #fff;
+          --muted: #6b7280;
+          --glass: rgba(255,255,255,0.6);
+        }
+        .root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; color:#111; }
+        .hero {
+          background: linear-gradient(180deg, rgba(127,92,255,0.06), rgba(255,94,149,0.03));
+          padding: 34px 26px;
+          border-bottom: 1px solid rgba(0,0,0,0.02);
+        }
+        .hero-inner { max-width: 1280px; margin: 0 auto; display:flex; gap:18px; align-items:flex-start; }
+        .hero-left { flex:1; min-width:0; }
+        .greet { color:var(--muted); font-size:14px; margin-bottom:6px; }
+        .hero-title { margin:0; font-size:44px; line-height:1; letter-spacing: -0.01em; }
+        .hero-sub { margin:6px 0 18px; color:var(--muted); }
+        .hero-controls { display:flex; gap:14px; align-items:center; }
+
+        .input-wrap { display:flex; align-items:center; gap:10px; background: #fff; border-radius:12px; padding:10px 12px; box-shadow: 0 8px 22px rgba(18,20,40,0.04); flex:1; }
+        .search-ico { opacity:0.7 }
+        .search-input { border:0; outline:0; font-size:15px; width:100%; padding:8px 4px; background:transparent; }
+        .cta { background: linear-gradient(90deg,#7F5CFF 0%,#FF5CA8 100%); color:#fff; padding:10px 18px; border-radius:12px; border:0; box-shadow:0 10px 22px rgba(127,92,255,0.12); cursor:pointer; font-weight:600; }
+        .hero-right { width:180px; display:flex; justify-content:flex-end; align-items:flex-start; }
+        .logo { width:140px; height:auto; object-fit:contain; }
+
+        .container { max-width:1280px; margin:26px auto; padding: 0 18px; display:grid; grid-template-columns: 1fr 340px; gap:20px; align-items:start; }
+
+        .card { background:var(--card-bg); border-radius:14px; padding:18px; box-shadow: 0 10px 30px rgba(12,12,30,0.04); }
+        .hero-card { overflow:visible; }
+
+        .card-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+        .muted { color:var(--muted); }
+        .small { font-size:13px; margin-top:6px; }
+
+        .verdict { max-width:360px; text-align:right; }
+        .verdict-tag { display:inline-block; padding:6px 10px; border-radius:999px; background:linear-gradient(90deg,#E9E5FF,#FEE9F3); color:#4b2bd4; font-weight:700; margin-bottom:6px; }
+        .verdict-text { color:var(--muted); font-size:13px; }
+
+        .controls-row { margin-top:18px; display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; }
+        .chips-row { display:flex; gap:10px; flex-wrap:wrap; }
+
+        .chip { position:relative; border-radius:12px; padding:10px 12px; background:#fff; border:1px solid rgba(14,16,22,0.06); cursor:pointer; overflow:hidden; transition: transform .14s ease, box-shadow .18s ease; display:flex; flex-direction:column; align-items:center; min-width:68px; }
+        .chip .chip-day { font-weight:600; }
+        .chip .chip-week { font-size:11px; color:var(--muted); margin-top:4px; }
+        .chip.active { border-color: #7F5CFF; box-shadow: 0 8px 24px rgba(127,92,255,0.12); transform:translateY(-4px); }
+        .chip.ripple::after { content:""; position:absolute; left:50%; top:50%; width:10px; height:10px; background:rgba(127,92,255,0.14); border-radius:50%; transform:translate(-50%,-50%) scale(1); animation:ripple .6s ease; }
+        @keyframes ripple { from { transform:translate(-50%,-50%) scale(1); opacity:1 } to { transform:translate(-50%,-50%) scale(12); opacity:0 } }
+
+        .mode-tabs { display:flex; gap:8px; align-items:center; }
+        .mode { padding:10px 14px; border-radius:10px; border:1px solid rgba(12,12,30,0.05); background:#fff; cursor:pointer; font-weight:600; }
+        .mode.active { background: linear-gradient(90deg,#7F5CFF 0%,#FF5CA8 100%); color:#fff; box-shadow:0 8px 20px rgba(127,92,255,0.12); border: none; }
+
+        .results { margin-top:18px; display:flex; flex-direction:column; gap:12px; }
+        .result-row { display:flex; justify-content:space-between; align-items:center; padding:16px; border-radius:10px; background:#FBFBFC; }
+        .res-title { font-weight:700; font-size:16px; }
+        .res-right { text-align:right; display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
+        .price { font-weight:800; font-size:18px; }
+        .outline { background:#fff; border:1px solid rgba(12,12,30,0.06); padding:8px 10px; border-radius:8px; cursor:pointer; }
+
+        .events { margin-top:18px; }
+        .event-item { margin-bottom:12px; color:var(--muted); font-size:14px; }
+
+        .nudges .nudge { display:flex; gap:12px; align-items:flex-start; margin-bottom:12px; }
+        .nudge-ico { width:44px; height:44px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:#FEF6F9; font-size:18px; }
+        .nudge-title { font-weight:700; }
+
+        /* responsive */
+        @media (max-width: 980px) {
+          .container { grid-template-columns: 1fr; }
+          .hero-title { font-size:36px; }
+          .hero-right { display:none; }
+          .verdict { text-align:left; margin-top:12px; }
+        }
+
+        /* small screens */
+        @media (max-width: 480px) {
+          .hero-title { font-size:28px; }
+          .chips-row { gap:8px; }
+          .chip { padding:8px 10px; min-width:62px; }
+        }
+      `}</style>
     </div>
   );
 }
