@@ -1,331 +1,318 @@
 // pages/plan.js
+import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/router";
-import { useMemo, useState } from "react";
 
-/**
- * Panchi - Plan page (Style B: Modern gradient + rounded cards)
- * Replace entire pages/plan.js with this file.
- * Ensure /public/panchi-logo.png exists (or update img src).
- */
+/*
+  Plan page for Panchi MVP
+  - reads ?destination=...
+  - shows 7-day chips, mode tabs, nudges & events, trending cards
+  - displays mock cheapest options for selected mode and date
+*/
 
-/* ---------------------------
-   Mock data helpers
-   --------------------------- */
-const makeNudges = () => [
-  { id: "n1", emoji: "☔", title: "Rain alert — Baga / Calangute", text: "Light rain Saturday evening; prefer inland stays for a quiet morning." },
-  { id: "n2", emoji: "🔥", title: "Price surge likely next Fri", text: "Searches up for DEL→GOI. Book early to save ~10–18%." },
-  { id: "n3", emoji: "🚦", title: "Traffic at Delhi T3 (Evening)", text: "Allow 30–45 mins extra to reach the airport." },
+const MOCK_FLIGHTS = [
+  { id: "f1", carrier: "IndiAir", depart: "DEL 06:00", arrive: "GOI 08:05", dur: "2h 5m", price: 3499 },
+  { id: "f2", carrier: "SkyWays", depart: "DEL 09:00", arrive: "GOI 11:05", dur: "2h 5m", price: 4299 },
+  { id: "f3", carrier: "BudgetAir", depart: "DEL 17:15", arrive: "GOI 19:20", dur: "2h 5m", price: 2999 },
 ];
 
-const makeEvents = () => [
-  { id: "e1", level: "HIGH", title: "EDM Festival", where: "Vagator, Goa", date: "2025-12-28", impact: "Hotels +30%; local crowding; cab surge likely" },
-  { id: "e2", level: "HIGH", title: "IPL Playoffs (sample)", where: "Mumbai", date: "2026-05-20", impact: "High transport demand; book early" },
-  { id: "e3", level: "MED", title: "Classical Music Fest", where: "Thiruvananthapuram", date: "2025-11-09", impact: "Boutique hotels fill fast" },
+const MOCK_TRAINS = [
+  { id: "t1", name: "Konkan Kanya Express · 10111", dept: "18:20", arr: "09:15", dur: "14h 55m", price: 1100 },
+  { id: "t2", name: "Jan Shatabdi Express · 12051", dept: "13:20", arr: "03:40", dur: "14h 20m", price: 1350 },
+  { id: "t3", name: "Vande Bharat Express · 22229", dept: "06:10", arr: "19:45", dur: "13h 35m", price: 1850 },
 ];
 
-const makeFlights = (dest = "Goa") => [
-  { id: "f1", carrier: "IndiAir", depart: "DEL 06:00", arrive: `${dest} 08:05`, dur: "2h 5m", price: 3499 },
-  { id: "f2", carrier: "SkyWays", depart: "DEL 09:00", arrive: `${dest} 11:05`, dur: "2h 5m", price: 4299 },
-  { id: "f3", carrier: "BudgetAir", depart: "DEL 17:15", arrive: `${dest} 19:20`, dur: "2h 5m", price: 2999 },
+const MOCK_CABS = [
+  { id: "c1", label: "Local Taxi", eta: "10 min", rating: 4.6, price: 220 },
+  { id: "c2", label: "Ola Mini", eta: "12 min", rating: 4.4, price: 249 },
+  { id: "c3", label: "Uber Go", eta: "9 min", rating: 4.5, price: 265 },
 ];
 
-const makeTrains = () => [
-  { id: "t1", name: "Konkan Kanya Express", no: "10111", depart: "18:20", arrive: "09:15", dur: "14h 55m", price: 1100 },
-  { id: "t2", name: "Jan Shatabdi", no: "12051", depart: "13:20", arrive: "03:40", dur: "14h 20m", price: 1350 },
-  { id: "t3", name: "Vande Bharat", no: "22229", depart: "06:10", arrive: "19:45", dur: "13h 35m", price: 1850 },
+const NUDGES = [
+  { id: 1, title: "Rain alert — Baga / Calangute", body: "Light rain Saturday evening; prefer inland stays for a quiet morning." },
+  { id: 2, title: "Price surge likely next Fri", body: "Searches up for DEL → GOI. Book early to save ~10–18%." },
+  { id: 3, title: "Traffic at Delhi T3 (Evening)", body: "Allow 30–45 mins extra to reach the airport." },
 ];
 
-const makeCabs = () => [
-  { id: "c1", prov: "Local Taxi", eta: "10m", rating: 4.6, price: 220 },
-  { id: "c2", prov: "Ola Mini", eta: "12m", rating: 4.4, price: 249 },
-  { id: "c3", prov: "Uber Go", eta: "9m", rating: 4.5, price: 265 },
-];
+function getSevenDays() {
+  const out = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    out.push({
+      iso: d.toISOString().slice(0, 10),
+      label: d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit" }),
+    });
+  }
+  return out;
+}
 
-/* ---------------------------
-   Component
-   --------------------------- */
-export default function PlanPage() {
+export default function Plan() {
   const router = useRouter();
-  const destination = (router.query.destination && String(router.query.destination)) || "Goa";
+  const { destination: destQuery } = router.query || {};
+  const destination = Array.isArray(destQuery) ? destQuery[0] : destQuery || "Goa";
 
   const [mode, setMode] = useState("flights"); // flights | trains | cabs
-  const nudges = useMemo(() => makeNudges(), []);
-  const events = useMemo(() => makeEvents(), []);
-  const flights = useMemo(() => makeFlights(destination), [destination]);
-  const trains = useMemo(() => makeTrains(), []);
-  const cabs = useMemo(() => makeCabs(), []);
+  const [selectedDate, setSelectedDate] = useState(getSevenDays()[0].iso);
+  const [results, setResults] = useState([]);
+  const [userName] = useState("Ethen"); // placeholder; replace with auth later
+
+  const seven = useMemo(() => getSevenDays(), []);
+
+  useEffect(() => {
+    // update results according to mode
+    if (mode === "flights") setResults(MOCK_FLIGHTS);
+    if (mode === "trains") setResults(MOCK_TRAINS);
+    if (mode === "cabs") setResults(MOCK_CABS);
+  }, [mode]);
+
+  function handleBook(item) {
+    // placeholder booking action
+    alert(`Booking placeholder for ${item.carrier || item.name || item.label} — ₹${item.price}`);
+  }
+
+  function handlePlanAgain() {
+    router.push(`/`);
+  }
+
+  // small "verdict" based on example conditions (mock)
+  function computeVerdict() {
+    // example simple logic:
+    if (destination.toLowerCase().includes("goa")) {
+      return {
+        label: "GOOD",
+        text: "Weather looks pleasant; some weekend rain patches. Best deals arrive on weekdays.",
+      };
+    }
+    return {
+      label: "NEUTRAL",
+      text: "Check hotels and events for local surges before booking.",
+    };
+  }
+
+  const verdict = computeVerdict();
 
   return (
-    <div className="page">
-      <header className="header">
-        <div className="header-left">
-          <div className="greeting">Hey, <strong>Ethen</strong></div>
-          <h1 className="headline">Where are we going next?</h1>
-          <p className="subhead">Panchi finds the smartest, safest and cheapest ways to reach your destination — starting with flights in this MVP, and later adding trains, buses and cabs.</p>
-
-          <div className="search-wrap">
-            <input className="search" placeholder={`Try "Goa", "Manali", "Jaipur" or "beach under 5k"`} />
-            <button className="btn-cta">Let Panchi plan →</button>
+    <div className="page-root" style={{ padding: 24 }}>
+      <div className="header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ color: "#666" }}>Hey, <strong>{userName}</strong></div>
+          <h1 style={{ margin: "6px 0 4px" }}>Where are we going next?</h1>
+          <p style={{ marginTop: 0, color: "#666" }}>
+            Panchi will find the smartest, safest and cheapest ways to reach <strong>{destination}</strong> — starting with flights in this MVP.
+          </p>
+          <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
+            <input
+              placeholder={`Try "Goa", "Manali", "Jaipur" or "beach under 5k"`}
+              value={destination}
+              readOnly
+              style={{
+                flex: 1,
+                padding: "14px 16px",
+                borderRadius: 12,
+                border: "1px solid #eee",
+                boxShadow: "0 6px 18px rgba(20,20,20,0.04)",
+                background: "#fff",
+              }}
+            />
+            <button
+              onClick={handlePlanAgain}
+              style={{
+                background: "linear-gradient(90deg,#7F5CFF 0%,#FF5CA8 100%)",
+                color: "#fff",
+                padding: "12px 18px",
+                borderRadius: 12,
+                border: "none",
+                boxShadow: "0 6px 16px rgba(127,92,255,0.18)",
+              }}
+            >
+              Let Panchi plan →
+            </button>
           </div>
         </div>
 
-        <div className="header-right">
-          <img src="/panchi-logo.png" alt="Panchi logo" className="logo" />
+        <div style={{ width: 180, textAlign: "right" }}>
+          <img src="/Panchi-logo.png" alt="Panchi" style={{ maxWidth: 160 }} />
         </div>
-      </header>
+      </div>
 
-      <main className="content">
-        <section className="left-col">
-          <div className="card hero-card">
-            <div className="card-top">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 24, marginTop: 28 }}>
+        {/* left main column */}
+        <div>
+          <div style={{ background: "#fff", borderRadius: 14, padding: 20, boxShadow: "0 8px 24px rgba(12,12,12,0.04)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <h2 className="card-title">Find the best options for <span className="dest">{destination}</span></h2>
-                <div className="card-sub">Panchi synthesizes price, events, weather, and community feedback to nudge you in realtime.</div>
-              </div>
-              <div className="mode-ind">Mode: <strong>{mode}</strong></div>
-            </div>
-
-            <div className="date-strip" role="tablist" aria-label="7-day view">
-              {Array.from({ length: 7 }).map((_, i) => {
-                const d = new Date();
-                d.setDate(d.getDate() + i);
-                const label = d.toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' });
-                return <div key={i} className="date-pill">{label}</div>;
-              })}
-            </div>
-
-            <div className="tabs">
-              <button className={`tab ${mode === "flights" ? "active" : ""}`} onClick={() => setMode("flights")}>Flights</button>
-              <button className={`tab ${mode === "trains" ? "active" : ""}`} onClick={() => setMode("trains")}>Trains</button>
-              <button className={`tab ${mode === "cabs" ? "active" : ""}`} onClick={() => setMode("cabs")}>Cabs</button>
-            </div>
-
-            <div className="results">
-              {mode === "flights" && flights.map(f => (
-                <div className="result" key={f.id}>
-                  <div className="result-left">
-                    <div className="res-title">{f.carrier}</div>
-                    <div className="res-sub">{f.depart} → {f.arrive} · {f.dur}</div>
-                  </div>
-                  <div className="result-right">₹{f.price}</div>
-                </div>
-              ))}
-
-              {mode === "trains" && trains.map(t => (
-                <div className="result" key={t.id}>
-                  <div className="result-left">
-                    <div className="res-title">{t.name} · {t.no}</div>
-                    <div className="res-sub">{t.depart} → {t.arrive} · {t.dur}</div>
-                  </div>
-                  <div className="result-right">₹{t.price}</div>
-                </div>
-              ))}
-
-              {mode === "cabs" && cabs.map(c => (
-                <div className="result" key={c.id}>
-                  <div className="result-left">
-                    <div className="res-title">{c.prov}</div>
-                    <div className="res-sub">ETA: {c.eta} · ★ {c.rating}</div>
-                  </div>
-                  <div className="result-right">₹{c.price}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="card events-card">
-            <h3 className="section-h">Events & crowd alerts</h3>
-            <div className="events">
-              {events.map(ev => (
-                <div className="event" key={ev.id}>
-                  <div className={`badge ${ev.level === "HIGH" ? "high" : ev.level === "MED" ? "med" : "low"}`}>{ev.level}</div>
-                  <div>
-                    <div className="ev-title">{ev.title} · <span className="muted">{ev.where}</span></div>
-                    <div className="ev-date">{ev.date}</div>
-                    <div className="ev-impact">{ev.impact}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="card trending-card">
-            <h3 className="section-h">Trending trips & ideas</h3>
-            <div className="trending-grid">
-              <div className="trip-card">
-                <div className="trip-tag">Popular</div>
-                <div className="trip-title">Goa</div>
-                <div className="trip-meta">Perfect weather + off-peak flight deals</div>
-                <div className="trip-price">₹6,000–₹8,500</div>
-                <button className="trip-btn">Explore</button>
+                <h3 style={{ margin: "0 0 6px" }}>Find the best options for {destination}</h3>
+                <div style={{ color: "#666", marginBottom: 12 }}>Panchi synthesizes price, events, weather, and community feedback to nudge you in realtime.</div>
               </div>
 
-              <div className="trip-card">
-                <div className="trip-tag">Popular</div>
-                <div className="trip-title">Rishikesh</div>
-                <div className="trip-meta">Great rafting season, clear skies</div>
-                <div className="trip-price">₹3,500–₹5,000</div>
-                <button className="trip-btn">Explore</button>
+              <div style={{ textAlign: "right", color: "#666" }}>
+                <div style={{ fontSize: 13 }}>Mode: <strong>{mode}</strong></div>
+                <div style={{ marginTop: 6, fontSize: 12, color: "#999" }}>{verdict.label} — {verdict.text}</div>
+              </div>
+            </div>
+
+            {/* date chips and mode tabs */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 16, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {seven.map((d) => (
+                  <button
+                    key={d.iso}
+                    onClick={() => setSelectedDate(d.iso)}
+                    className={`chip ${selectedDate === d.iso ? "chip-active" : ""}`}
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      border: selectedDate === d.iso ? "2px solid #7F5CFF" : "1px solid #eee",
+                      background: selectedDate === d.iso ? "#F6F0FF" : "#FAFAFB",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
+                <button
+                  onClick={() => setMode("flights")}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: mode === "flights" ? "none" : "1px solid #eee",
+                    background: mode === "flights" ? "linear-gradient(90deg,#7F5CFF 0%,#FF5CA8 100%)" : "#fff",
+                    color: mode === "flights" ? "#fff" : "#333",
+                    boxShadow: mode === "flights" ? "0 6px 16px rgba(127,92,255,0.12)" : "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  Flights
+                </button>
+                <button
+                  onClick={() => setMode("trains")}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: mode === "trains" ? "none" : "1px solid #eee",
+                    background: mode === "trains" ? "linear-gradient(90deg,#7F5CFF 0%,#FF5CA8 100%)" : "#fff",
+                    color: mode === "trains" ? "#fff" : "#333",
+                    cursor: "pointer",
+                  }}
+                >
+                  Trains
+                </button>
+                <button
+                  onClick={() => setMode("cabs")}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: mode === "cabs" ? "none" : "1px solid #eee",
+                    background: mode === "cabs" ? "linear-gradient(90deg,#7F5CFF 0%,#FF5CA8 100%)" : "#fff",
+                    color: mode === "cabs" ? "#fff" : "#333",
+                    cursor: "pointer",
+                  }}
+                >
+                  Cabs
+                </button>
+              </div>
+            </div>
+
+            {/* results list */}
+            <div style={{ marginTop: 18 }}>
+              {mode === "flights" &&
+                MOCK_FLIGHTS.map((f) => (
+                  <div key={f.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 16, borderRadius: 10, background: "#FBFBFC", marginBottom: 12 }}>
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{f.carrier}</div>
+                      <div style={{ color: "#666", fontSize: 13 }}>{f.depart} → {f.arrive} · {f.dur}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontWeight: 700 }}>₹{f.price}</div>
+                      <button onClick={() => handleBook(f)} style={{ marginTop: 8, padding: "8px 12px", borderRadius: 8, border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Book</button>
+                    </div>
+                  </div>
+                ))}
+
+              {mode === "trains" &&
+                MOCK_TRAINS.map((t) => (
+                  <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 16, borderRadius: 10, background: "#FBFBFC", marginBottom: 12 }}>
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{t.name}</div>
+                      <div style={{ color: "#666", fontSize: 13 }}>{t.dept} → {t.arr} · {t.dur}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontWeight: 700 }}>₹{t.price}</div>
+                      <button onClick={() => handleBook(t)} style={{ marginTop: 8, padding: "8px 12px", borderRadius: 8, border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Book</button>
+                    </div>
+                  </div>
+                ))}
+
+              {mode === "cabs" &&
+                MOCK_CABS.map((c) => (
+                  <div key={c.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 16, borderRadius: 10, background: "#FBFBFC", marginBottom: 12 }}>
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{c.label}</div>
+                      <div style={{ color: "#666", fontSize: 13 }}>ETA: {c.eta} · Rating: ★ {c.rating}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontWeight: 700 }}>₹{c.price}</div>
+                      <button onClick={() => handleBook(c)} style={{ marginTop: 8, padding: "8px 12px", borderRadius: 8, border: "1px solid #ddd", background: "#fff", cursor: "pointer" }}>Book</button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          {/* events & crowd alerts */}
+          <div style={{ marginTop: 18 }}>
+            <div style={{ padding: 18, background: "#fff", borderRadius: 14, boxShadow: "0 8px 24px rgba(12,12,12,0.04)" }}>
+              <h4 style={{ marginTop: 0 }}>Events & crowd alerts</h4>
+              <div style={{ color: "#333" }}>
+                <div style={{ marginBottom: 12 }}>
+                  <strong>HIGH</strong> — Sunburn-esque EDM Festival, Vagator, Goa · 2025-12-28<br />
+                  High crowding · Hotels +30% · Cab surge likely.<br />
+                  <em>Panchi: Book hotels + cabs if attending; avoid beachfront stays if you want quiet.</em>
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <strong>HIGH</strong> — IPL Playoffs (Sample), Mumbai · 2026-05-20<br />
+                  High hotel & flight demand · Local transport crowded.<br />
+                  <em>Panchi: Book transport early and plan longer arrival buffers to stadiums.</em>
+                </div>
               </div>
             </div>
           </div>
-        </section>
+        </div>
 
-        <aside className="right-col">
-          <div className="card nudges-card">
-            <h4 className="section-h">Nudges & alerts</h4>
-            <ul className="nudges-list">
-              {nudges.map(n => (
-                <li key={n.id} className="nudge-item">
-                  <div className="n-emoji">{n.emoji}</div>
-                  <div>
-                    <div className="n-title">{n.title}</div>
-                    <div className="n-text muted">{n.text}</div>
+        {/* right sidebar */}
+        <aside>
+          <div style={{ position: "sticky", top: 24 }}>
+            <div style={{ background: "#fff", padding: 18, borderRadius: 14, boxShadow: "0 8px 24px rgba(12,12,12,0.04)" }}>
+              <h5 style={{ marginTop: 0 }}>Nudges & alerts</h5>
+              <div>
+                {NUDGES.map((n) => (
+                  <div key={n.id} style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: "#F4F7FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      ⚠️
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{n.title}</div>
+                      <div style={{ color: "#666", fontSize: 13 }}>{n.body}</div>
+                    </div>
                   </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+                ))}
+              </div>
 
-          <div className="card community-card">
-            <h4 className="section-h">Community quick takes</h4>
-            <div className="comm">
-              <div className="comm-item"><b>Asha</b> — "Loved morning at Baga, crowd low before 8am."</div>
-              <div className="comm-item"><b>Rajan</b> — "Roads clear in Oct. Check live advisories during monsoon."</div>
+              <div style={{ marginTop: 12 }}>
+                <h6 style={{ marginBottom: 8 }}>Community quick takes</h6>
+                <div style={{ color: "#666", fontSize: 13 }}>
+                  <div style={{ marginBottom: 6 }}><strong>Asha</strong> — "Loved morning at Baga, crowd manageable."</div>
+                  <div><strong>Rajan</strong> — "Road diversions in festival season; allow extra time."</div>
+                </div>
+              </div>
             </div>
-          </div>
-
-          <div className="card safety-card">
-            <h4 className="section-h">Safety index</h4>
-            <div className="s-bar"><div className="s-fill" style={{ width: "78%" }} /></div>
-            <div className="muted small">Score: 78 / 100 · Avoid late-night beaches during festivals</div>
           </div>
         </aside>
-      </main>
-
-      <style jsx>{`
-        :root {
-          --bg: #fbfbfe;
-          --muted: #6b7280;
-          --card-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
-          --radius: 14px;
-          --grad-start: #6d28d9;
-          --grad-end: #fb7185;
-        }
-
-        .page { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background: var(--bg); min-height:100vh; padding:30px; box-sizing:border-box; }
-
-        /* Header */
-        .header { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:22px; }
-        .header-left { flex:1; background: linear-gradient(180deg,#fff,#fff); padding:22px; border-radius:var(--radius); box-shadow:var(--card-shadow); }
-        .header-right { width:220px; display:flex; justify-content:flex-end; }
-        .logo { width:160px; height:auto; object-fit:contain; }
-
-        .greeting { color:var(--muted); font-size:14px; margin-bottom:6px; }
-        .headline { font-size:32px; line-height:1.03; margin:2px 0 8px; }
-        .subhead { color:var(--muted); margin:0 0 12px; }
-
-        .search-wrap { display:flex; gap:12px; align-items:center; }
-        .search { flex:1; padding:12px 14px; border-radius:12px; border:1px solid #eef2ff; background:#fff; font-size:15px; box-shadow:inset 0 1px 0 rgba(0,0,0,0.02); }
-        .btn-cta { background:linear-gradient(90deg,var(--grad-start),var(--grad-end)); color:white; padding:11px 18px; border-radius:12px; border:none; font-weight:700; cursor:pointer; box-shadow:0 8px 20px rgba(107,70,193,0.12); }
-
-        /* Layout */
-        .content { display:grid; grid-template-columns: 1fr 340px; gap:22px; align-items:start; margin-top:16px; }
-
-        .card { background:white; border-radius:12px; padding:16px; box-shadow:var(--card-shadow); }
-
-        /* Left column */
-        .left-col .hero-card { padding:18px; }
-        .card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
-        .card-title { margin:0; font-size:20px; }
-        .card-sub { color:var(--muted); margin-top:6px; }
-
-        .mode-ind { color:var(--muted); font-size:14px; white-space:nowrap; }
-
-        .date-strip { display:flex; gap:10px; margin:14px 0 12px; overflow:auto; padding-bottom:6px; }
-        .date-pill { background:#f6f7fb; padding:8px 12px; border-radius:10px; font-weight:700; min-width:68px; text-align:center; }
-
-        .tabs {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.tab {
-  padding: 10px 18px;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  background: #f8f9fc;
-  cursor: pointer;
-  font-weight: 600;
-  color: #374151; /* visible on all themes */
-  transition: all 0.25s ease;
-}
-
-.tab:hover {
-  background: #eef1f7;
-}
-
-.tab.active {
-  background: linear-gradient(90deg, #7a5cf4, #ff6fb1);
-  color: #ffffff !important;
-  border: none;
-  box-shadow: 0 8px 18px rgba(107, 70, 193, 0.18);
-}
-        .results { display:flex; flex-direction:column; gap:10px; margin-top:8px; }
-
-        .result { display:flex; justify-content:space-between; align-items:center; padding:14px; background:#fbfcff; border-radius:10px; border:1px solid #f1f5f9; }
-        .res-title { font-weight:800; }
-        .res-sub { color:var(--muted); margin-top:6px; font-size:13px; }
-        .result-right { font-weight:800; font-size:16px; }
-
-        .events-card .events { display:flex; flex-direction:column; gap:12px; margin-top:8px; }
-        .event { display:flex; gap:12px; align-items:flex-start; }
-        .badge { min-width:56px; text-align:center; padding:10px; border-radius:8px; font-weight:800; color:white; }
-        .badge.high { background:#ef4444; }
-        .badge.med { background:#f59e0b; }
-        .badge.low { background:#10b981; }
-
-        .ev-title { font-weight:700; }
-        .ev-date, .ev-impact { color:var(--muted); font-size:13px; margin-top:6px; }
-
-        .trending-grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:8px; }
-        .trip-card { background: linear-gradient(90deg, rgba(99,102,241,0.08), rgba(251,113,133,0.06)); padding:12px; border-radius:10px; position:relative; }
-        .trip-tag { position:absolute; right:12px; top:12px; background:#fff; padding:6px 8px; border-radius:8px; font-weight:700; font-size:12px; box-shadow:0 6px 16px rgba(15,23,42,0.04); }
-        .trip-title { font-weight:800; font-size:16px; }
-        .trip-meta { color:var(--muted); margin-top:6px; font-size:13px; }
-        .trip-price { margin-top:10px; font-weight:800; }
-        .trip-btn { margin-top:10px; padding:8px 12px; border-radius:10px; border:none; background:linear-gradient(90deg,var(--grad-start),var(--grad-end)); color:#fff; cursor:pointer; }
-
-        /* Right column */
-        .right-col .nudges-list { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:12px; }
-        .nudge-item { display:flex; gap:12px; align-items:flex-start; }
-        .n-emoji { font-size:20px; background:#f6f7fb; padding:10px; border-radius:10px; min-width:44px; display:flex; align-items:center; justify-content:center; }
-        .n-title { font-weight:700; }
-        .n-text { font-size:13px; color:var(--muted); margin-top:4px; }
-
-        .community-card .comm { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
-        .comm-item { background:#fff; padding:10px; border-radius:8px; border:1px solid #f1f5f9; }
-
-        .s-bar { height:10px; background:#f3f4f6; border-radius:999px; margin:10px 0; overflow:hidden; }
-        .s-fill { height:100%; background: linear-gradient(90deg,#34d399,#10b981); border-radius:999px; }
-
-        /* Responsive */
-        @media (max-width: 960px) {
-          .content { grid-template-columns: 1fr; }
-          .header { flex-direction:column; gap:12px; }
-          .header-right { width:100%; display:flex; justify-content:flex-end; }
-          .logo { width:140px; }
-          .trending-grid { grid-template-columns: 1fr; }
-        }
-
-        @media (max-width: 520px) {
-          .headline { font-size:22px; }
-          .logo { width:120px; }
-          .result { padding:12px; }
-          .trip-btn { width:100%; }
-        }
-      `}</style>
+      </div>
     </div>
   );
 }
