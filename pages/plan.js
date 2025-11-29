@@ -886,6 +886,10 @@ body,html,#__next{margin:0;padding:0;background:linear-gradient(180deg, rgba(14,
 /* ------------------------
    Internal fallback mocks (same as earlier)
 ------------------------ */
+/* ------------------------
+   Internal fallback mocks (replacement tail)
+   Replacing simpleMockCabs and the rest to ensure no EOF/syntax issue
+------------------------ */
 function simpleMockNudges() {
   return [
     { id: "n1", type: "weather", title: "Rain alert in Goa this weekend", detail: "Light rain expected on Saturday evening around Baga-Calangute stretch.", icon: "☔" },
@@ -932,6 +936,31 @@ function simpleMockBuses(dest) {
   return [{ id: "b1", depart: "DEL 21:00", arrive: `${dest} 09:00`, duration: "12h 0m", price: 900 }];
 }
 function simpleMockCabs(dest) {
-  return [{ id: "c1", depart: "Airport", arrive: `${dest} City`, duration: "30m", price: 650, eta: "12 min" }];
+  // Return static simple cab objects (no left-open template)
+  return [
+    { id: "c1", depart: "Airport", arrive: `${dest} City`, duration: "30m", price: 650, eta: "12 min" },
+    { id: "c2", depart: "Railway Station", arrive: `${dest} City`, duration: "25m", price: 550, eta: "10 min" },
+  ];
 }
-`;
+
+function synthesizeTrend(dest, eventsList = [], nudgesList = []) {
+  const res = [];
+  const now = new Date();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    let priceIndex = 0.45 + Math.random() * 0.4;
+    const dayStr = d.toISOString().slice(0, 10);
+    const eventRisk = eventsList.some((ev) => ev.location && ev.location.toLowerCase().includes(dest.toLowerCase()) && ev.date === dayStr) ? 0.8 : 0;
+    const pricingNudge = nudgesList.some((n) => n.type === "pricing") ? 0.12 : 0;
+    priceIndex = Math.min(0.98, priceIndex + eventRisk * 0.25 + pricingNudge);
+    const weatherRisk = nudgesList.some((n) => n.type === "weather") ? 0.4 : Math.random() * 0.25;
+    const evRisk = eventRisk || (Math.random() > 0.85 ? 0.4 : 0);
+    res.push({
+      date: d.toISOString().slice(0, 10),
+      priceIndex: Math.round(priceIndex * 100) / 100,
+      weatherRisk: Math.round(weatherRisk * 100) / 100,
+      eventRisk: Math.round(evRisk * 100) / 100,
+    });
+  }
+  return res;
+}
