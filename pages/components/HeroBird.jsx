@@ -1,4 +1,4 @@
-// pages/components/HeroBird.jsx
+//pages/components/HeroBird.jsx
 import React from "react";
 
 /**
