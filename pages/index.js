@@ -1,9 +1,6 @@
 // pages/index.js
 import React, { useMemo, useState } from "react";
 import Head from "next/head";
-import Link from "next/link";
-import PriceCard from "./components/PriceCard"; // existing component in pages/components
-// Note: PlanCard is optional. If you have PlanCard, you can import similarly.
 
 const sampleResults = [
   { id: "f1", title: "IndiAir", subtitle: "DEL 06:00 → GOA 08:05 · 2h 5m", price: "₹3499", mood: "GOOD" },
@@ -27,7 +24,6 @@ export default function Home() {
   const [mode, setMode] = useState("flights"); // flights | trains | cabs
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
 
-  // 7-day quick chips
   const dateChips = useMemo(() => {
     const out = [];
     const today = new Date();
@@ -37,15 +33,12 @@ export default function Home() {
       out.push({
         key: i,
         label: d.toLocaleDateString("en-GB", { month: "2-digit", day: "2-digit" }),
-        pretty: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
       });
     }
     return out;
   }, []);
 
-  // filtered results — mock logic (replace with real API)
   const results = useMemo(() => {
-    // simple: return sampleResults for flights; otherwise small variations
     if (mode === "flights") return sampleResults;
     if (mode === "trains") {
       return [
@@ -53,7 +46,6 @@ export default function Home() {
         { id: "t2", title: "Jan Shatabdi Express · 12051", subtitle: "13:20 → 03:40 · 14h 20m", price: "₹1350" },
       ];
     }
-    // cabs
     return [
       { id: "c1", title: "Local Taxi", subtitle: "ETA: 10 min · Rating: ★ 4.6", price: "₹220" },
       { id: "c2", title: "Ola Mini", subtitle: "ETA: 12 min · Rating: ★ 4.4", price: "₹249" },
@@ -82,11 +74,12 @@ export default function Home() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="search-input"
               />
-              <button className="cta" onClick={() => alert("Let Panchi plan — (mock)")} >Let Panchi plan →</button>
+              <button className="cta" onClick={() => alert("Mock: Let Panchi plan")}>Let Panchi plan →</button>
             </div>
           </div>
 
           <div className="hero-right">
+            {/* If you have panchi-logo.png in public/, it will show; otherwise logo area stays blank */}
             <img src="/panchi-logo.png" alt="Panchi logo" className="logo" />
           </div>
         </header>
@@ -99,10 +92,7 @@ export default function Home() {
                   <h3>Find the best options for <span className="dest">{search || "Goa"}</span></h3>
                   <p className="panel-sub">Panchi synthesizes price, events, weather, and community feedback to nudge you in realtime.</p>
                 </div>
-
-                <div className="mode-meta">
-                  <div>Mode: <strong>{mode}</strong></div>
-                </div>
+                <div className="mode-meta">Mode: <strong>{mode}</strong></div>
               </div>
 
               <div className="chips">
@@ -126,13 +116,18 @@ export default function Home() {
               <div className="results" role="list">
                 {results.map((r) => (
                   <div key={r.id} className="result-item" role="listitem">
-                    {/* Use PriceCard to keep visual consistency */}
-                    <PriceCard
-                      title={r.title}
-                      subtitle={r.subtitle}
-                      price={r.price}
-                      actionText="Book"
-                    />
+                    {/* Inline card UI — used instead of importing PriceCard */}
+                    <div className="card">
+                      <div className="card-left">
+                        <div className="card-title">{r.title}</div>
+                        <div className="card-sub">{r.subtitle}</div>
+                        {r.mood && <div className="mood">Mood: <strong>{r.mood}</strong></div>}
+                      </div>
+                      <div className="card-right">
+                        <div className="price">{r.price}</div>
+                        <button className="book">Book</button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -143,9 +138,7 @@ export default function Home() {
               <div className="trending-grid">
                 {trending.map((t) => (
                   <div className="trend" key={t.id}>
-                    <div className="trend-header">
-                      <div className="tag">Popular</div>
-                    </div>
+                    <div className="trend-header"><div className="tag">Popular</div></div>
                     <div className="trend-body">
                       <div className="trend-title">{t.title}</div>
                       <div className="trend-sub">{t.subtitle}</div>
@@ -188,175 +181,44 @@ export default function Home() {
           --accent-from: #7c4dff;
           --accent-to: #ff68a1;
         }
-
-        .page {
-          min-height: 100vh;
-          background: linear-gradient(180deg, var(--bg) 0%, #fff 60%);
-          padding: 28px 36px;
-          font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-        }
-
-        .hero {
-          display: flex;
-          gap: 32px;
-          align-items: center;
-          margin-bottom: 22px;
-        }
-
-        .hero-left {
-          flex: 1;
-        }
-
-        .greet {
-          font-size: 14px;
-          color: var(--muted);
-          margin-bottom: 6px;
-        }
-
-        .headline {
-          font-size: 48px;
-          line-height: 1.02;
-          margin: 0 0 8px 0;
-          color: #0f172a;
-        }
-
-        .subhead {
-          color: var(--muted);
-          margin: 0 0 18px 0;
-        }
-
-        .search-row {
-          display: flex;
-          gap: 16px;
-          align-items: center;
-          width: 100%;
-        }
-
-        .search-input {
-          flex: 1;
-          border-radius: 14px;
-          border: 1px solid rgba(16, 24, 40, 0.06);
-          padding: 16px 18px;
-          font-size: 15px;
-          box-shadow: 0 8px 20px rgba(16,24,40,0.04);
-          outline: none;
-        }
-
-        .cta {
-          background: linear-gradient(90deg, var(--accent-from), var(--accent-to));
-          color: white;
-          border: none;
-          padding: 12px 18px;
-          border-radius: 12px;
-          font-weight: 700;
-          cursor: pointer;
-          box-shadow: 0 12px 30px rgba(124,77,255,0.14);
-        }
-
-        .hero-right .logo {
-          width: 220px;
-          height: auto;
-          object-fit: contain;
-        }
-
-        .content {
-          display: grid;
-          grid-template-columns: 1fr 340px;
-          gap: 28px;
-        }
-
-        .panel {
-          background: var(--card-bg);
-          border-radius: 18px;
-          padding: 20px;
-          box-shadow: 0 12px 40px rgba(16,24,40,0.06);
-        }
-
-        .panel-header {
-          display:flex;
-          justify-content:space-between;
-          align-items:flex-start;
-          gap:20px;
-        }
-
-        .panel-sub { color: var(--muted); margin-top:4px; }
-
-        .chips {
-          display:flex;
-          gap:10px;
-          margin: 18px 0;
-          flex-wrap:wrap;
-        }
-
-        .chip {
-          border-radius: 12px;
-          padding: 8px 12px;
-          border: 1px solid rgba(16,24,40,0.06);
-          background: #fff;
-          font-weight:600;
-          cursor:pointer;
-        }
-
-        .chip.active {
-          background: linear-gradient(90deg, rgba(124,77,255,0.1), rgba(255,104,161,0.08));
-          border-color: rgba(124,77,255,0.22);
-          box-shadow: 0 8px 20px rgba(124,77,255,0.06);
-        }
-
-        .tabs { display:flex; gap:8px; margin-bottom: 14px; }
-        .tab {
-          padding:8px 14px;
-          border-radius: 10px;
-          border: 1px solid rgba(16,24,40,0.06);
-          background:white;
-          cursor:pointer;
-        }
-        .tab.active {
-          background: linear-gradient(90deg, var(--accent-from), var(--accent-to));
-          color: white;
-          font-weight:700;
-        }
-
+        .page { min-height:100vh; background:linear-gradient(180deg,var(--bg)0%,#fff60%); padding:28px 36px; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial; }
+        .hero { display:flex; gap:32px; align-items:center; margin-bottom:22px; }
+        .hero-left { flex:1; }
+        .greet { font-size:14px; color:var(--muted); margin-bottom:6px; }
+        .headline { font-size:48px; line-height:1.02; margin:0 0 8px 0; color:#0f172a; }
+        .subhead { color:var(--muted); margin:0 0 18px 0; }
+        .search-row { display:flex; gap:16px; align-items:center; width:100%; }
+        .search-input { flex:1; border-radius:14px; border:1px solid rgba(16,24,40,0.06); padding:16px 18px; font-size:15px; box-shadow:0 8px 20px rgba(16,24,40,0.04); outline:none; }
+        .cta { background:linear-gradient(90deg,var(--accent-from),var(--accent-to)); color:white; border:none; padding:12px 18px; border-radius:12px; font-weight:700; cursor:pointer; box-shadow:0 12px 30px rgba(124,77,255,0.14); }
+        .hero-right .logo { width:220px; height:auto; object-fit:contain; }
+        .content { display:grid; grid-template-columns:1fr 340px; gap:28px; }
+        .panel { background:var(--card-bg); border-radius:18px; padding:20px; box-shadow:0 12px 40px rgba(16,24,40,0.06); }
+        .panel-header { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; }
+        .panel-sub { color:var(--muted); margin-top:4px; }
+        .chips { display:flex; gap:10px; margin:18px 0; flex-wrap:wrap; }
+        .chip { border-radius:12px; padding:8px 12px; border:1px solid rgba(16,24,40,0.06); background:#fff; font-weight:600; cursor:pointer; }
+        .chip.active { background:linear-gradient(90deg, rgba(124,77,255,0.1), rgba(255,104,161,0.08)); border-color:rgba(124,77,255,0.22); box-shadow:0 8px 20px rgba(124,77,255,0.06); }
+        .tabs { display:flex; gap:8px; margin-bottom:14px; }
+        .tab { padding:8px 14px; border-radius:10px; border:1px solid rgba(16,24,40,0.06); background:white; cursor:pointer; }
+        .tab.active { background:linear-gradient(90deg,var(--accent-from),var(--accent-to)); color:white; font-weight:700; }
         .results { display:flex; flex-direction:column; gap:12px; margin-top:8px; }
-        .result-item { width:100%; }
-
+        .card { display:flex; justify-content:space-between; align-items:center; padding:18px; background:#fbfbff; border-radius:12px; border:1px solid rgba(16,24,40,0.03); box-shadow:0 8px 16px rgba(16,24,40,0.03); }
+        .card-title { font-weight:700; font-size:16px; margin-bottom:6px; }
+        .card-sub { color:var(--muted); font-size:13px; }
+        .price { font-weight:800; font-size:18px; }
+        .book { border-radius:8px; padding:8px 10px; border:1px solid rgba(16,24,40,0.06); background:white; cursor:pointer; }
         .trending { margin-top:20px; }
         .trending-grid { display:flex; gap:12px; flex-wrap:wrap; }
-        .trend {
-          background: linear-gradient(180deg, #fff, #fbfbff);
-          border-radius:12px;
-          padding:12px;
-          width: 48%;
-          box-shadow: 0 8px 20px rgba(16,24,40,0.04);
-        }
-        .trend .tag { display:inline-block; background:#f1f1f6; padding:6px 8px; border-radius:8px; font-size:12px; color:var(--muted); margin-bottom:8px; }
-
+        .trend { background:linear-gradient(180deg,#fff,#fbfbff); border-radius:12px; padding:12px; width:48%; box-shadow:0 8px 20px rgba(16,24,40,0.04); }
+        .tag { display:inline-block; background:#f1f1f6; padding:6px 8px; border-radius:8px; font-size:12px; color:var(--muted); margin-bottom:8px; }
         .right-col { position:relative; }
-        .nudges, .community {
-          background: var(--card-bg);
-          padding: 16px;
-          border-radius:12px;
-          box-shadow: 0 10px 30px rgba(16,24,40,0.04);
-          margin-bottom:18px;
-        }
-
+        .nudges, .community { background:var(--card-bg); padding:16px; border-radius:12px; box-shadow:0 10px 30px rgba(16,24,40,0.04); margin-bottom:18px; }
         .nudge { border-bottom:1px dashed rgba(16,24,40,0.04); padding:10px 0; }
         .nudge:last-child { border-bottom:none; padding-bottom:0; }
         .nudge-title { font-weight:700; margin-bottom:6px; }
-        .nudge-text { color: var(--muted); font-size:14px; }
-
-        /* Responsive */
-        @media (max-width: 980px) {
-          .content { grid-template-columns: 1fr; }
-          .hero { flex-direction: column; align-items: stretch; gap: 18px; }
-          .hero-right { display:flex; justify-content:flex-end; }
-          .hero-right .logo { width: 160px; }
-        }
-
-        @media (max-width: 480px) {
-          .headline { font-size: 30px; }
-          .search-input { padding: 12px; }
-        }
+        .nudge-text { color:var(--muted); font-size:14px; }
+        @media (max-width:980px) { .content { grid-template-columns: 1fr; } .hero { flex-direction: column; align-items: stretch; gap:18px; } .hero-right { display:flex; justify-content:flex-end; } .hero-right .logo { width:160px; } }
+        @media (max-width:480px) { .headline { font-size:30px; } .search-input { padding:12px; } .trend { width:100% } }
       `}</style>
     </>
   );
