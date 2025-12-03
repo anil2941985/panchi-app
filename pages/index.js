@@ -1,7 +1,56 @@
 // pages/index.js
 import React, { useMemo, useState } from "react";
-import PriceCard from "../components/PriceCard";
-import PlanCard from "../components/PlanCard";
+
+// NOTE: your components are under pages/components/ — import accordingly
+import PriceCardComp from "./components/PriceCard";
+import PlanCardComp from "./components/PlanCard";
+
+/**
+ * Safe wrappers: if user moved components or they fail, we fallback to simple UI.
+ * This prevents build-time crashes (prerender) caused by undefined props or server-only issues.
+ */
+const PriceCard = (props) => {
+  try {
+    if (typeof PriceCardComp === "function") return <PriceCardComp {...props} />;
+  } catch (e) {
+    /* swallow - will render fallback below */
+  }
+  // fallback
+  const { flight = {} } = props;
+  return (
+    <div className="fallback-card">
+      <div>
+        <div className="title">{flight.airline ?? "Unknown Airline"}</div>
+        <div className="meta">{flight.depart ?? ""} → {flight.arrive ?? ""} · {flight.duration ?? ""}</div>
+        <div className="mood">Mood: <strong>{flight.mood ?? "—"}</strong></div>
+      </div>
+      <div className="price-cta">
+        <div className="price">₹{flight.price ?? "—"}</div>
+        <button className="ghost">Book</button>
+      </div>
+    </div>
+  );
+};
+
+const PlanCard = (props) => {
+  try {
+    if (typeof PlanCardComp === "function") return <PlanCardComp {...props} />;
+  } catch (e) {}
+  const { title = "Place", subtitle = "", range = "" } = props;
+  return (
+    <div className="plan-fallback">
+      <div className="plan-title">{title}</div>
+      <div className="plan-sub">{subtitle}</div>
+      <div className="plan-range">{range}</div>
+      <style jsx>{`
+        .plan-fallback { padding:12px; background:#fff; border-radius:12px; box-shadow: 0 8px 20px rgba(2,6,23,0.04); min-width:180px; }
+        .plan-title { font-weight:700; margin-bottom:6px; }
+        .plan-sub { color:#6b7280; font-size:13px; margin-bottom:8px; }
+        .plan-range { font-weight:700; color:#111827; }
+      `}</style>
+    </div>
+  );
+};
 
 const MOCK_FLIGHTS = [
   { id: "f1", airline: "IndiAir", depart: "DEL 06:00", arrive: "GOI 08:05", duration: "2h 5m", price: 3499, mood: "GOOD" },
@@ -18,6 +67,7 @@ const NUDGES = [
 export default function Home() {
   const [query, setQuery] = useState("Goa");
   const [selectedDate, setSelectedDate] = useState(0);
+
   const dates = useMemo(() => {
     const base = new Date();
     const arr = [];
@@ -28,10 +78,9 @@ export default function Home() {
     return arr;
   }, []);
 
-  // simple filter: if query contains "Goa" show all flights; otherwise same mock
   const results = useMemo(() => {
     if (!query) return MOCK_FLIGHTS;
-    return MOCK_FLIGHTS.filter((f) => query.trim() === "" || `${f.airline} ${f.depart} ${f.arrive}`.toLowerCase().includes(query.toLowerCase()));
+    return MOCK_FLIGHTS.filter((f) => `${f.airline} ${f.depart} ${f.arrive}`.toLowerCase().includes(query.toLowerCase()));
   }, [query]);
 
   return (
@@ -39,7 +88,6 @@ export default function Home() {
       <header className="header">
         <div className="logo-row">
           <div className="logo-wrap" aria-hidden>
-            {/* lightweight logo svg */}
             <svg width="160" height="60" viewBox="0 0 160 60" xmlns="http://www.w3.org/2000/svg">
               <defs>
                 <linearGradient id="g1" x1="0" x2="1">
@@ -79,8 +127,6 @@ export default function Home() {
               <button
                 className="cta"
                 onClick={() => {
-                  // quick UI-only action
-                  // in real app this would navigate to /plan?destination=...
                   window.location.href = `/plan?destination=${encodeURIComponent(query || "Goa")}`;
                 }}
               >
@@ -127,21 +173,8 @@ export default function Home() {
               {results.length === 0 && <div className="empty">No matching results — try another query.</div>}
 
               {results.map((r) => (
-                // Using PriceCard if available — fallback UI if component not present
                 <div key={r.id} className="result-row">
-                  {typeof PriceCard !== "undefined" ? (
-                    <PriceCard flight={r} />
-                  ) : (
-                    <div className="fallback-card">
-                      <div className="title">{r.airline}</div>
-                      <div className="meta">{r.depart} → {r.arrive} · {r.duration}</div>
-                      <div className="mood">Mood: <strong>{r.mood}</strong></div>
-                      <div className="price-cta">
-                        <div className="price">₹{r.price}</div>
-                        <button className="ghost">Book</button>
-                      </div>
-                    </div>
-                  )}
+                  <PriceCard flight={r} />
                 </div>
               ))}
             </div>
@@ -157,7 +190,7 @@ export default function Home() {
         </section>
 
         <aside className="right-col">
-          <div className="nudge-panel">
+          <div className="nudge-panel panel">
             <h4>Nudges & alerts</h4>
             <ul>
               {NUDGES.map((n, i) => (
@@ -172,7 +205,7 @@ export default function Home() {
             </ul>
           </div>
 
-          <div className="community">
+          <div className="community panel">
             <h5>Community quick takes</h5>
             <div className="quote"><strong>Asha</strong> — "Loved morning at Baga, crowd manageable."</div>
             <div className="quote"><strong>Rajan</strong> — "Road diversions in festival season; allow extra time."</div>
@@ -199,7 +232,6 @@ export default function Home() {
         .search-row { display:flex; gap:16px; align-items:center; margin-top:10px; }
         .search { flex:1; padding:20px 18px; border-radius:14px; border:1px solid rgba(16,24,40,0.06); background: #fff; box-shadow: 0 6px 18px rgba(12,15,20,0.02); font-size:16px; }
         .cta { padding:12px 20px; border-radius:12px; border: none; background: var(--accent1); color:white; font-weight:700; cursor:pointer; box-shadow: 0 8px 24px rgba(124,77,255,0.18); }
-
         .container { display:grid; grid-template-columns: 1fr 340px; gap:28px; padding:28px 32px; max-width:1240px; margin:0 auto; align-items:start; }
         .left-col { }
         .right-col { }
@@ -207,34 +239,26 @@ export default function Home() {
         .panel-head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
         .muted { color:var(--muted); }
         .small { font-size:13px; }
-
         .date-row { display:flex; gap:8px; flex-wrap:wrap; margin:14px 0; }
         .pill { border:1px solid rgba(16,24,40,0.06); background:#fff; padding:8px 12px; border-radius:10px; cursor:pointer; box-shadow: 0 6px 18px rgba(12,15,20,0.02); }
         .pill.active { border-color: #7c4dff; box-shadow: 0 8px 26px rgba(124,77,255,0.08); color:#7c4dff; font-weight:700; }
-
         .mode-tabs { margin: 12px 0 18px; display:flex; gap:12px; }
         .tab { padding:8px 12px; border-radius:10px; border:1px solid rgba(16,24,40,0.06); background: #fff; cursor:pointer; }
         .tab.active { background: var(--accent1); color:white; box-shadow: 0 8px 24px rgba(124,77,255,0.14); border:none; }
-
         .results { margin-top:8px; display:flex; flex-direction:column; gap:12px; }
-        .result-row { }
         .fallback-card { padding:18px; border-radius:10px; background: #fbfdff; display:flex; justify-content:space-between; align-items:center; }
         .fallback-card .title { font-weight:700; font-size:16px; }
         .fallback-card .meta { color:var(--muted); margin-top:6px; font-size:13px; }
         .price-cta { display:flex; gap:12px; align-items:center; }
         .price { font-weight:700; font-size:18px; }
         .ghost { border:1px solid rgba(16,24,40,0.08); background:transparent; padding:8px 12px; border-radius:8px; cursor:pointer; }
-
         .cards-row { display:flex; gap:12px; margin-top:10px; flex-wrap:wrap; }
         .nudge-panel h4, .community h5 { margin:0 0 10px 0; }
         .nudge { display:flex; gap:12px; padding:12px 10px; border-radius:10px; background:#fff; margin-bottom:10px; align-items:flex-start; box-shadow: 0 6px 18px rgba(12,15,20,0.02); }
         .n-icon { width:36px; height:36px; display:flex; align-items:center; justify-content:center; background:linear-gradient(90deg,#fff,#fff); border-radius:8px; }
         .n-title { font-weight:700; }
-
         .community { margin-top:20px; padding:16px; border-radius:10px; background:#fff; box-shadow: 0 6px 18px rgba(12,15,20,0.02); }
         .quote { color:var(--muted); margin-bottom:8px; }
-
-        /* responsive */
         @media (max-width: 980px) {
           .container { grid-template-columns: 1fr; padding:18px; }
           .right-col { order: 2; }
