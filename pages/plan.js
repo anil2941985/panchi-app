@@ -1,9 +1,10 @@
 // pages/plan.js
 import React, { useState, useMemo } from "react";
-import PlanCard from "./components/PlanCard";    // existing: pages/components/PlanCard.js
-import PriceCard from "./components/PriceCard";  // existing: pages/components/PriceCard.jsx
 
-// Simple mock data (replace with API calls later)
+// NOTE: we intentionally do NOT import PriceCard or HeroBird here to avoid
+// build-time module resolution errors. If you want PriceCard/PlanCard as separate
+// components, make sure they exist at pages/components/PriceCard.jsx (or update import path).
+
 const DAYS = ["29/11", "30/11", "01/12", "02/12", "03/12", "04/12", "05/12"];
 const MOCK_FLIGHTS = [
   { id: "f1", airline: "IndiAir", depart: "DEL 06:00", arrive: "GOI 08:05", dur: "2h 5m", price: 3499, mood: "GOOD" },
@@ -13,20 +14,17 @@ const MOCK_FLIGHTS = [
 
 export default function PlanPage({ query }) {
   const [selectedDay, setSelectedDay] = useState(0);
-  const [mode, setMode] = useState("flights"); // flights | trains | cabs
+  const [mode, setMode] = useState("flights");
   const [searchQ, setSearchQ] = useState((query && query.destination) || "Goa");
 
-  // filtered results (placeholder - later pull from real APIs)
   const results = useMemo(() => {
     if (mode === "flights") return MOCK_FLIGHTS;
-    // fallback: show same list for other modes for now
     return MOCK_FLIGHTS;
   }, [mode]);
 
   return (
     <div style={{ fontFamily: "'Inter', system-ui, Arial, sans-serif", color: "#111", padding: 24 }}>
-      {/* header block */}
-      <header style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20 }}>
+      <header style={{ display: "flex", gap: 20, alignItems: "flex-start", justifyContent: "space-between" }}>
         <div style={{ flex: 1 }}>
           <div style={{ color: "#666", marginBottom: 8 }}>Hey, <strong>Ethen</strong></div>
           <h1 style={{ fontSize: 44, margin: "6px 0 8px", lineHeight: 1.02 }}>Where are we going next?</h1>
@@ -34,7 +32,7 @@ export default function PlanPage({ query }) {
             Panchi finds the smartest, safest and cheapest ways to reach <strong>{searchQ}</strong> — starting with flights in this MVP.
           </p>
 
-          <div style={{ display: "flex", gap: 12, marginTop: 18, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 12, marginTop: 18 }}>
             <input
               aria-label="Where to?"
               value={searchQ}
@@ -68,18 +66,15 @@ export default function PlanPage({ query }) {
           </div>
         </div>
 
-        {/* right logo / quick card */}
         <div style={{ width: 220, textAlign: "right" }}>
-          {/* placeholder logo area */}
           <img alt="Panchi" src="/panchi-logo.png" style={{ width: 160, height: "auto" }} />
         </div>
       </header>
 
-      {/* main grid */}
       <main style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 28, marginTop: 28 }}>
         <section>
           <div style={{ padding: 18, borderRadius: 14, background: "white", boxShadow: "0 8px 28px rgba(20,30,50,0.04)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
               <div>
                 <h2 style={{ margin: 0 }}>Find the best options for {searchQ}</h2>
                 <p style={{ marginTop: 8, color: "#6b7280" }}>
@@ -89,7 +84,6 @@ export default function PlanPage({ query }) {
               <div style={{ color: "#6b7280", fontSize: 14 }}>Mode: <strong>{mode}</strong></div>
             </div>
 
-            {/* date pills */}
             <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
               {DAYS.map((d, i) => (
                 <button
@@ -108,7 +102,6 @@ export default function PlanPage({ query }) {
               ))}
             </div>
 
-            {/* mode tabs */}
             <div style={{ marginTop: 14, display: "flex", gap: 12 }}>
               {["flights", "trains", "cabs"].map((m) => (
                 <button
@@ -129,7 +122,6 @@ export default function PlanPage({ query }) {
               ))}
             </div>
 
-            {/* results list */}
             <div style={{ marginTop: 18, display: "grid", gap: 12 }}>
               {results.map((r) => (
                 <div
@@ -172,7 +164,6 @@ export default function PlanPage({ query }) {
           </div>
         </section>
 
-        {/* right column: nudges & community */}
         <aside>
           <div style={{ padding: 18, borderRadius: 12, background: "white", boxShadow: "0 8px 24px rgba(20,30,50,0.04)" }}>
             <h3 style={{ marginTop: 0 }}>Nudges & alerts</h3>
@@ -206,18 +197,25 @@ export default function PlanPage({ query }) {
 
           <div style={{ height: 16 }} />
 
-          {/* trending / offers card — quick PriceCard usage (if exists) */}
-          <div>
-            <h4 style={{ margin: "8px 0 6px" }}>Trending trips & ideas</h4>
-            <PriceCard style={{ marginBottom: 8 }} />
-            {/* PriceCard component should render safely if present */}
+          <div style={{ padding: 12, borderRadius: 12, background: "#fff", boxShadow: "0 6px 18px rgba(20,30,50,0.04)" }}>
+            <h4 style={{ margin: "6px 0" }}>Trending trips & ideas</h4>
+            {/* Inline simple trending card — safe fallback when PriceCard component isn't present */}
+            <div style={{ padding: 12, borderRadius: 10, border: "1px solid rgba(10,20,40,0.04)", marginBottom: 8 }}>
+              <div style={{ fontWeight: 700 }}>Goa</div>
+              <div style={{ color: "#6b7280", fontSize: 13 }}>Perfect weather + off-peak weekday flight deals</div>
+              <div style={{ marginTop: 8, fontWeight: 700 }}>₹6,000–₹8,500</div>
+            </div>
+            <div style={{ padding: 12, borderRadius: 10, border: "1px solid rgba(10,20,40,0.04)" }}>
+              <div style={{ fontWeight: 700 }}>Rishikesh</div>
+              <div style={{ color: "#6b7280", fontSize: 13 }}>Great rafting season, clear skies</div>
+              <div style={{ marginTop: 8, fontWeight: 700 }}>₹3,500–₹5,000</div>
+            </div>
           </div>
         </aside>
       </main>
 
       <style jsx global>{`
         body { background: linear-gradient(180deg,#fbfdff 0%, #ffffff 60%); margin: 0; }
-        /* small responsive tweak */
         @media (max-width: 900px) {
           main { grid-template-columns: 1fr; }
         }
