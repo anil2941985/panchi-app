@@ -1,9 +1,8 @@
 // pages/api/searchFlights.js
+// Mock flight search API. Replace with real provider later.
 export default function handler(req, res) {
-  // Accept query params e.g. ?q=Goa&date=2025-11-29&mode=flights
   const { q = "Goa", date = "2025-11-29" } = req.query;
 
-  // Mocked flight list (you'll replace with real provider later)
   const flights = [
     { id: "f1", airline: "IndiAir", depart: "DEL 06:00", arrive: "GOI 08:05", dur: "2h 5m", price: 3499, mood: "GOOD" },
     { id: "f2", airline: "SkyWays", depart: "DEL 09:00", arrive: "GOI 11:05", dur: "2h 5m", price: 4299, mood: "FAIR" },
