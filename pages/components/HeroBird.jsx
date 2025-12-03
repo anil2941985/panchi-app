@@ -1,83 +1,41 @@
-//pages/components/HeroBird.jsx
-import React from "react";
+// pages/components/HeroBird.jsx
+import React, { useEffect, useState } from 'react';
 
 /**
- * Simple HeroBird component — SVG bird with small wing/flight animation.
- * Saves having external assets and avoids missing-file build errors.
+ * HeroBird:
+ * - Server-safe: renders a static SVG markup on the server.
+ * - On the client, it adds a gentle CSS animation (flight / bob).
+ * - Lightweight, no external libs.
  */
-
-export default function HeroBird({ width = 120, className = "" }) {
-  const style = {
-    display: "inline-block",
-    width: width,
-    height: "auto",
-    transformOrigin: "center",
-  };
+export default function HeroBird() {
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => { setIsClient(true); }, []);
 
   return (
-    <div
-      className={`hero-bird ${className}`}
-      style={{ ...style, willChange: "transform, opacity" }}
-      aria-hidden="true"
-    >
-      <svg
-        viewBox="0 0 120 80"
-        width="100%"
-        height="100%"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <defs>
-          <linearGradient id="g1" x1="0" x2="1">
-            <stop offset="0%" stopColor="#00A7FF" />
-            <stop offset="60%" stopColor="#00D1A7" />
-            <stop offset="100%" stopColor="#FF8AC0" />
-          </linearGradient>
-          <linearGradient id="g2" x1="0" x2="1">
-            <stop offset="0%" stopColor="#FFB347" />
-            <stop offset="100%" stopColor="#FF7EB3" />
-          </linearGradient>
-        </defs>
-
-        {/* Body */}
-        <g transform="translate(10,10)">
-          <ellipse cx="45" cy="30" rx="26" ry="18" fill="url(#g1)" />
-          {/* Wing */}
-          <path
-            className="wing"
-            d="M45 22 C65 5, 85 5, 95 18 C84 30, 62 34, 45 28 Z"
-            fill="url(#g2)"
-            opacity="0.98"
-          />
-          {/* Beak */}
-          <path d="M70 30 L78 27 L74 32 Z" fill="#FFCC4D" />
-          {/* Tail */}
-          <path d="M22 30 C12 20, 6 16, 0 10 L6 24 C12 28, 18 30, 22 30 Z" fill="#0077C2" />
+    <div className={`hero-bird ${isClient ? 'client' : 'ssr'}`} aria-hidden>
+      <svg viewBox="0 0 120 120" width="140" height="70" role="img" aria-label="Panchi bird">
+        <g transform="translate(8,6)">
+          {/* simple colorful bird mark */}
+          <path d="M6 46c8-24 38-40 64-28-10 10-24 18-40 26-10 5-20 12-24 18-6-8-6-16-0-36z" fill="#1ea7ff" />
+          <path d="M74 6c10 6 18 16 20 28-8 2-18 2-28-2 4-10 6-18 8-26z" fill="#ff9a5b" />
+          <circle cx="54" cy="32" r="5" fill="#ffd166" />
         </g>
       </svg>
 
       <style jsx>{`
-        .hero-bird {
-          animation: floatY 3.6s ease-in-out infinite;
+        .hero-bird { display:flex; align-items:center; justify-content:center; overflow:visible; }
+        /* gentle flight bob when client */
+        .hero-bird.client svg { animation: bird-fly 6s ease-in-out infinite; transform-origin: 50% 50%; }
+        @keyframes bird-fly {
+          0% { transform: translateY(0) rotate(0deg) scale(1); }
+          25% { transform: translateY(-6px) rotate(-2deg) scale(1.02); }
+          50% { transform: translateY(0px) rotate(0deg) scale(1); }
+          75% { transform: translateY(-4px) rotate(1deg) scale(1.01); }
+          100% { transform: translateY(0) rotate(0deg) scale(1); }
         }
-        .hero-bird .wing {
-          transform-origin: 68px 24px;
-          animation: flap 0.9s ease-in-out infinite;
-        }
-
-        @keyframes floatY {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-8px); }
-          100% { transform: translateY(0px); }
-        }
-        @keyframes flap {
-          0% { transform: rotate(0deg); }
-          50% { transform: rotate(-12deg) scaleY(0.98); }
-          100% { transform: rotate(0deg); }
-        }
-
-        /* Small screens — scale down */
-        @media (max-width: 640px) {
-          .hero-bird { width: ${Math.min(width, 84)}px; }
+        /* smaller on narrow screens */
+        @media (max-width:640px) {
+          .hero-bird svg { width: 110px; height:58px; }
         }
       `}</style>
     </div>
