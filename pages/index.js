@@ -1,292 +1,243 @@
 // pages/index.js
-import React, { useState, useMemo } from 'react';
-import dynamic from 'next/dynamic';
+import React, { useMemo, useState } from "react";
+import PriceCard from "../components/PriceCard";
+import PlanCard from "../components/PlanCard";
 
-// dynamic import for animated hero (avoid SSR problems if the component uses window/animations)
-const HeroBird = dynamic(() => import('./components/HeroBird').catch(() => () => null), {
-  ssr: false,
-});
+const MOCK_FLIGHTS = [
+  { id: "f1", airline: "IndiAir", depart: "DEL 06:00", arrive: "GOI 08:05", duration: "2h 5m", price: 3499, mood: "GOOD" },
+  { id: "f2", airline: "SkyWays", depart: "DEL 09:00", arrive: "GOI 11:05", duration: "2h 5m", price: 4299, mood: "FAIR" },
+  { id: "f3", airline: "BudgetAir", depart: "DEL 17:15", arrive: "GOI 19:20", duration: "2h 5m", price: 2999, mood: "GOOD" }
+];
 
-// Static imports (defensive) — adjust path if you moved components to repo root
-let HeaderComp = null;
-let PriceCard = null;
-let PlanCard = null;
-
-try {
-  /* eslint-disable global-require */
-  HeaderComp = require('./components/Header').default || null;
-  PriceCard = require('./components/PriceCard').default || null;
-  PlanCard = require('./components/PlanCard').default || null;
-  /* eslint-enable global-require */
-} catch (e) {
-  // if components are missing we'll still render a safe UI
-  HeaderComp = HeaderComp || null;
-  PriceCard = PriceCard || null;
-  PlanCard = PlanCard || null;
-}
+const NUDGES = [
+  { icon: "⚠️", title: "Rain alert — Baga / Calangute", txt: "Light rain Saturday evening; prefer inland stays for a quiet morning." },
+  { icon: "🔥", title: "Price surge likely next Fri", txt: "Searches spiking for DEL → GOI. Book early to save ~10–18%." },
+  { icon: "🚦", title: "Traffic at Delhi T3 (Evening)", txt: "Allow 30–45 mins extra to reach the airport." }
+];
 
 export default function Home() {
-  // UI state
-  const [query, setQuery] = useState('Goa');
-  const [mode, setMode] = useState('flights'); // flights | trains | cabs
-  const [selectedDateIndex, setSelectedDateIndex] = useState(0);
-
-  // Mock 7-day dates (quick demo)
+  const [query, setQuery] = useState("Goa");
+  const [selectedDate, setSelectedDate] = useState(0);
   const dates = useMemo(() => {
+    const base = new Date();
     const arr = [];
-    const start = new Date();
     for (let i = 0; i < 7; i++) {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      arr.push({
-        key: d.toISOString().slice(5, 10).replace('-', '/'), // MM/DD
-        label: d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }),
-        date: d.toISOString().slice(0, 10),
-      });
+      const d = new Date(base.getTime() + i * 24 * 60 * 60 * 1000);
+      arr.push({ key: i, label: d.toLocaleDateString(undefined, { month: "2-digit", day: "2-digit" }) });
     }
     return arr;
   }, []);
 
-  // Mock offers / prices (replace with real api later)
-  const mockFlights = [
-    { id: 'f1', airline: 'IndiAir', depart: 'DEL 06:00', arrive: 'GOI 08:05', duration: '2h 5m', price: 3499, class: 'Economy', rating: 4.2 },
-    { id: 'f2', airline: 'SkyWays', depart: 'DEL 09:00', arrive: 'GOI 11:05', duration: '2h 5m', price: 4299, class: 'Economy', rating: 4.1 },
-    { id: 'f3', airline: 'BudgetAir', depart: 'DEL 17:15', arrive: 'GOI 19:20', duration: '2h 5m', price: 2999, class: 'Economy', rating: 3.9 },
-  ];
-
-  const nudges = [
-    { id: 'n1', title: 'Rain alert — Baga / Calangute', body: 'Light rain Saturday evening; prefer inland stays for a quiet morning.' },
-    { id: 'n2', title: 'Price surge likely next Fri', body: 'Searches up for DEL → GOI. Book early to save ~10–18%.' },
-    { id: 'n3', title: 'Traffic at Delhi T3 (Evening)', body: 'Allow 30–45 mins extra to reach the airport.' },
-  ];
-
-  function handleBook(item) {
-    // placeholder — replace with real booking flow
-    // eslint-disable-next-line no-alert
-    alert(`Book clicked for ${item?.airline || 'Unknown'} — ₹${item?.price ?? '—'}`);
-  }
-
-  function handlePlan() {
-    // placeholder for "Let Panchi plan" AI flow
-    // eslint-disable-next-line no-alert
-    alert(`Panchi planning for "${query}" on ${dates[selectedDateIndex].date} (${mode})`);
-  }
+  // simple filter: if query contains "Goa" show all flights; otherwise same mock
+  const results = useMemo(() => {
+    if (!query) return MOCK_FLIGHTS;
+    return MOCK_FLIGHTS.filter((f) => query.trim() === "" || `${f.airline} ${f.depart} ${f.arrive}`.toLowerCase().includes(query.toLowerCase()));
+  }, [query]);
 
   return (
-    <div className="page">
-      <header className="topbar">
-        <div className="topbar-inner">
-          {HeaderComp ? <HeaderComp /> : <div className="brand">Hey, <strong>Ethen</strong></div>}
-          <div className="hero-wrap">
-            <HeroBird />
+    <div className="page-root">
+      <header className="header">
+        <div className="logo-row">
+          <div className="logo-wrap" aria-hidden>
+            {/* lightweight logo svg */}
+            <svg width="160" height="60" viewBox="0 0 160 60" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="g1" x1="0" x2="1">
+                  <stop offset="0" stopColor="#00b4d8" />
+                  <stop offset="0.5" stopColor="#7c4dff" />
+                  <stop offset="1" stopColor="#ff8a65" />
+                </linearGradient>
+              </defs>
+              <g transform="translate(6,6)">
+                <ellipse cx="16" cy="22" rx="14" ry="12" fill="url(#g1)" />
+                <path d="M30 12 Q44 4 58 12 Q46 22 30 12Z" fill="#ffcc80" opacity="0.95" />
+                <text x="76" y="30" fontFamily="Inter, Arial" fontSize="28" fill="#3b3b3b" fontWeight="700">panchi</text>
+              </g>
+            </svg>
+          </div>
+          <nav className="top-nav">
+            <a href="/explore">Explore</a>
+            <a href="/plans">Plans</a>
+            <a href="/community">Community</a>
+          </nav>
+        </div>
+
+        <div className="hero">
+          <div className="hero-content">
+            <p className="greet">Hey, <strong>Ethen</strong></p>
+            <h1 className="hero-title">Where are we going next?</h1>
+            <p className="hero-sub">Panchi will find the smartest, safest and cheapest ways to reach <strong>Goa</strong> — starting with flights in this MVP.</p>
+
+            <div className="search-row">
+              <input
+                aria-label="Where to?"
+                className="search"
+                placeholder='Try "Goa", "Manali", "Jaipur" or "beach under 5k"'
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <button
+                className="cta"
+                onClick={() => {
+                  // quick UI-only action
+                  // in real app this would navigate to /plan?destination=...
+                  window.location.href = `/plan?destination=${encodeURIComponent(query || "Goa")}`;
+                }}
+              >
+                Let Panchi plan →
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
       <main className="container">
-        <section className="hero">
-          <h1 className="title">Where are we going next?</h1>
-          <p className="subtitle">
-            Panchi finds the smartest, safest and cheapest ways to reach <strong>{query || 'your destination'}</strong> — starting with flights in this MVP.
-          </p>
-
-          <div className="search-row">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={`Try "Goa", "Manali", "Jaipur" or "beach under 5k"`}
-              className="search-input"
-              aria-label="Where to?"
-            />
-            <button className="plan-btn" onClick={handlePlan}>Let Panchi plan →</button>
-          </div>
-        </section>
-
-        <section className="content">
-          <div className="left">
-            <div className="card info-card">
-              <div className="card-header">
-                <div>
-                  <h2>Find the best options for {query || 'your trip'}</h2>
-                  <p className="muted">Panchi synthesizes price, events, weather, and community feedback to nudge you in realtime.</p>
-                </div>
-
-                <div className="mode-label">Mode: <strong>{mode}</strong></div>
+        <section className="left-col">
+          <div className="panel">
+            <div className="panel-head">
+              <div>
+                <h2>Find the best options for <span className="muted">Goa</span></h2>
+                <p className="muted small">Panchi synthesizes price, events, weather and community feedback to nudge you in realtime.</p>
               </div>
 
-              <div className="date-row">
-                {dates.map((d, idx) => (
-                  <button
-                    key={d.key}
-                    className={`date-chip ${selectedDateIndex === idx ? 'active' : ''}`}
-                    onClick={() => setSelectedDateIndex(idx)}
-                    aria-pressed={selectedDateIndex === idx}
-                  >
-                    {d.key}
-                  </button>
-                ))}
-              </div>
-
-              <div className="mode-tabs">
-                <button className={`tab ${mode === 'flights' ? 'active' : ''}`} onClick={() => setMode('flights')}>Flights</button>
-                <button className={`tab ${mode === 'trains' ? 'active' : ''}`} onClick={() => setMode('trains')}>Trains</button>
-                <button className={`tab ${mode === 'cabs' ? 'active' : ''}`} onClick={() => setMode('cabs')}>Cabs</button>
-              </div>
-
-              <div className="results">
-                {/* If you have PlanCard component you can render it here */}
-                {PlanCard ? <PlanCard summary={{ query, mode, date: dates[selectedDateIndex]?.date }} /> : null}
-
-                <div className="list">
-                  {/* Render PriceCard if available, else fallback to inline simple row */}
-                  {mockFlights.map((f) => (
-                    PriceCard ? (
-                      <PriceCard key={f.id} item={f} onBook={handleBook} />
-                    ) : (
-                      <div key={f.id} className="simple-row">
-                        <div>
-                          <div className="airline">{f.airline}</div>
-                          <div className="route muted">{f.depart} → {f.arrive} · {f.duration}</div>
-                        </div>
-                        <div className="price-area">
-                          <div className="price">₹{f.price}</div>
-                          <button className="book-small" onClick={() => handleBook(f)}>Book</button>
-                        </div>
-                      </div>
-                    )
-                  ))}
-                </div>
+              <div className="mode-block">
+                <span className="mode-label">Mode:</span> <strong>flights</strong>
               </div>
             </div>
-          </div>
 
-          <aside className="right">
-            <div className="nudges card">
-              <h3>Nudges & alerts</h3>
-              {nudges.map((n) => (
-                <div key={n.id} className="nudge">
-                  <div className="n-title">{n.title}</div>
-                  <div className="n-body muted">{n.body}</div>
+            <div className="date-row">
+              {dates.map((d) => (
+                <button
+                  key={d.key}
+                  className={`pill ${selectedDate === d.key ? "active" : ""}`}
+                  onClick={() => setSelectedDate(d.key)}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="mode-tabs">
+              <button className="tab active">Flights</button>
+              <button className="tab">Trains</button>
+              <button className="tab">Cabs</button>
+            </div>
+
+            <div className="results">
+              {results.length === 0 && <div className="empty">No matching results — try another query.</div>}
+
+              {results.map((r) => (
+                // Using PriceCard if available — fallback UI if component not present
+                <div key={r.id} className="result-row">
+                  {typeof PriceCard !== "undefined" ? (
+                    <PriceCard flight={r} />
+                  ) : (
+                    <div className="fallback-card">
+                      <div className="title">{r.airline}</div>
+                      <div className="meta">{r.depart} → {r.arrive} · {r.duration}</div>
+                      <div className="mood">Mood: <strong>{r.mood}</strong></div>
+                      <div className="price-cta">
+                        <div className="price">₹{r.price}</div>
+                        <button className="ghost">Book</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
-
-              <div className="community card small-card">
-                <h4>Community quick takes</h4>
-                <p className="muted">Asha — "Loved morning at Baga, crowd manageable."</p>
-                <p className="muted">Rajan — "Road diversions in festival season; allow extra time."</p>
-              </div>
             </div>
-          </aside>
+          </div>
+
+          <div className="panel">
+            <h3>Trending trips & ideas</h3>
+            <div className="cards-row">
+              <PlanCard title="Goa" subtitle="Perfect weather + off-peak weekday flight deals" range="₹6,000–₹8,500" />
+              <PlanCard title="Rishikesh" subtitle="Great rafting season, clear skies" range="₹3,500–₹5,000" />
+            </div>
+          </div>
         </section>
+
+        <aside className="right-col">
+          <div className="nudge-panel">
+            <h4>Nudges & alerts</h4>
+            <ul>
+              {NUDGES.map((n, i) => (
+                <li key={i} className="nudge">
+                  <div className="n-icon">{n.icon}</div>
+                  <div>
+                    <div className="n-title">{n.title}</div>
+                    <div className="n-txt">{n.txt}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="community">
+            <h5>Community quick takes</h5>
+            <div className="quote"><strong>Asha</strong> — "Loved morning at Baga, crowd manageable."</div>
+            <div className="quote"><strong>Rajan</strong> — "Road diversions in festival season; allow extra time."</div>
+          </div>
+        </aside>
       </main>
 
       <style jsx>{`
-        .page {
-          background: linear-gradient(180deg, rgba(250,250,253,1) 0%, rgba(244,249,255,1) 100%);
-          min-height: 100vh;
-          color: #0f1724;
-          font-family: Inter, system-ui, -apple-system, "Helvetica Neue", Arial;
+        :root {
+          --bg: #f6f9ff;
+          --panel: #ffffff;
+          --muted: #6b7280;
+          --accent1: linear-gradient(90deg,#7c4dff,#ff6b9a);
         }
-        .topbar {
-          padding: 20px 28px;
-        }
-        .topbar-inner {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        .brand { font-size: 14px; color: #333; }
-        .hero-wrap { width: 140px; height: 60px; display:flex; align-items:center; justify-content:center; }
+        .page-root { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; color: #111827; background: var(--bg); min-height: 100vh; }
+        .header { padding: 28px 32px 10px; }
+        .logo-row { display:flex; justify-content:space-between; align-items:center; gap:20px; }
+        .top-nav a { margin-left: 18px; color:#374151; text-decoration:none; font-weight:600; opacity:0.9; }
+        .hero { margin-top: 8px; padding: 28px; border-radius: 18px; background: linear-gradient(180deg, rgba(124,77,255,0.06), rgba(255,107,154,0.02)); box-shadow: 0 8px 30px rgba(12,15,20,0.04); }
+        .hero-content { max-width:1240px; }
+        .greet { color: var(--muted); margin:0 0 6px; }
+        .hero-title { font-size:44px; margin:0 0 8px; line-height:1.02;}
+        .hero-sub { margin:0 0 18px; color:var(--muted); }
+        .search-row { display:flex; gap:16px; align-items:center; margin-top:10px; }
+        .search { flex:1; padding:20px 18px; border-radius:14px; border:1px solid rgba(16,24,40,0.06); background: #fff; box-shadow: 0 6px 18px rgba(12,15,20,0.02); font-size:16px; }
+        .cta { padding:12px 20px; border-radius:12px; border: none; background: var(--accent1); color:white; font-weight:700; cursor:pointer; box-shadow: 0 8px 24px rgba(124,77,255,0.18); }
 
-        .container { max-width: 1200px; margin: 0 auto; padding: 18px; }
+        .container { display:grid; grid-template-columns: 1fr 340px; gap:28px; padding:28px 32px; max-width:1240px; margin:0 auto; align-items:start; }
+        .left-col { }
+        .right-col { }
+        .panel { background:var(--panel); border-radius:14px; padding:20px; box-shadow: 0 10px 30px rgba(12,15,20,0.04); margin-bottom:18px; }
+        .panel-head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+        .muted { color:var(--muted); }
+        .small { font-size:13px; }
 
-        .hero { padding: 12px 0 20px 0; }
-        .title { font-size: 48px; margin: 6px 0; line-height: 1.02; }
-        .subtitle { color: #58606a; margin-bottom: 18px; }
+        .date-row { display:flex; gap:8px; flex-wrap:wrap; margin:14px 0; }
+        .pill { border:1px solid rgba(16,24,40,0.06); background:#fff; padding:8px 12px; border-radius:10px; cursor:pointer; box-shadow: 0 6px 18px rgba(12,15,20,0.02); }
+        .pill.active { border-color: #7c4dff; box-shadow: 0 8px 26px rgba(124,77,255,0.08); color:#7c4dff; font-weight:700; }
 
-        .search-row { display:flex; gap:14px; align-items:center; margin-top: 12px; }
-        .search-input {
-          flex: 1;
-          padding: 18px 20px;
-          border-radius: 14px;
-          border: none;
-          box-shadow: 0 6px 20px rgba(12,28,52,0.06);
-          font-size: 16px;
-        }
-        .plan-btn {
-          background: linear-gradient(90deg,#7a4fff,#ff6fb4);
-          border: none;
-          color: #fff;
-          padding: 12px 20px;
-          border-radius: 12px;
-          box-shadow: 0 8px 24px rgba(122,79,255,0.18);
-          cursor: pointer;
-          font-weight: 600;
-        }
+        .mode-tabs { margin: 12px 0 18px; display:flex; gap:12px; }
+        .tab { padding:8px 12px; border-radius:10px; border:1px solid rgba(16,24,40,0.06); background: #fff; cursor:pointer; }
+        .tab.active { background: var(--accent1); color:white; box-shadow: 0 8px 24px rgba(124,77,255,0.14); border:none; }
 
-        .content { display: grid; grid-template-columns: 1fr 340px; gap: 22px; margin-top: 18px; align-items: start; }
-        .left { }
-        .right { }
+        .results { margin-top:8px; display:flex; flex-direction:column; gap:12px; }
+        .result-row { }
+        .fallback-card { padding:18px; border-radius:10px; background: #fbfdff; display:flex; justify-content:space-between; align-items:center; }
+        .fallback-card .title { font-weight:700; font-size:16px; }
+        .fallback-card .meta { color:var(--muted); margin-top:6px; font-size:13px; }
+        .price-cta { display:flex; gap:12px; align-items:center; }
+        .price { font-weight:700; font-size:18px; }
+        .ghost { border:1px solid rgba(16,24,40,0.08); background:transparent; padding:8px 12px; border-radius:8px; cursor:pointer; }
 
-        .card { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 10px 30px rgba(16,24,40,0.06); }
-        .info-card { padding: 18px; }
-
-        .card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; }
-        .muted { color:#6b7280; font-size: 14px; }
-
-        .date-row { display:flex; gap:10px; margin: 10px 0 12px 0; flex-wrap:wrap; }
-        .date-chip {
-          background: #f3f5f9;
-          border-radius: 12px;
-          padding: 8px 12px;
-          border: 1px solid rgba(16,24,40,0.04);
-          cursor: pointer;
-        }
-        .date-chip.active {
-          background: linear-gradient(90deg,#efedf7,#f6e7ff);
-          border: 1px solid rgba(124,58,237,0.2);
-          box-shadow: 0 6px 18px rgba(124,58,237,0.12);
-        }
-
-        .mode-tabs { margin: 12px 0; display:flex; gap:8px; }
-        .tab {
-          background: #fff;
-          border: 1px solid rgba(16,24,40,0.06);
-          padding: 8px 12px;
-          border-radius: 12px;
-          cursor: pointer;
-        }
-        .tab.active {
-          background: linear-gradient(90deg,#9b6bff,#ff8fb6);
-          color: #fff;
-        }
-
-        .list { margin-top: 10px; }
-
-        /* simple fallback row */
-        .simple-row {
-          display:flex;
-          justify-content:space-between;
-          align-items:center;
-          padding: 16px;
-          border-radius: 10px;
-          background: #fbfcfe;
-          margin-bottom: 12px;
-          border: 1px solid rgba(16,24,40,0.02);
-        }
-        .price-area { text-align:right; min-width:120px; }
-        .price { font-weight:700; margin-bottom:6px; }
-        .book-small { padding:8px 10px; border-radius:8px; border:1px solid rgba(16,24,40,0.06); background:#fff; cursor:pointer; }
-
-        .nudges .nudge { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid rgba(16,24,40,0.04); }
+        .cards-row { display:flex; gap:12px; margin-top:10px; flex-wrap:wrap; }
+        .nudge-panel h4, .community h5 { margin:0 0 10px 0; }
+        .nudge { display:flex; gap:12px; padding:12px 10px; border-radius:10px; background:#fff; margin-bottom:10px; align-items:flex-start; box-shadow: 0 6px 18px rgba(12,15,20,0.02); }
+        .n-icon { width:36px; height:36px; display:flex; align-items:center; justify-content:center; background:linear-gradient(90deg,#fff,#fff); border-radius:8px; }
         .n-title { font-weight:700; }
-        .community { margin-top: 18px; padding: 12px; border-radius: 10px; background:#fff; }
+
+        .community { margin-top:20px; padding:16px; border-radius:10px; background:#fff; box-shadow: 0 6px 18px rgba(12,15,20,0.02); }
+        .quote { color:var(--muted); margin-bottom:8px; }
 
         /* responsive */
         @media (max-width: 980px) {
-          .content { grid-template-columns: 1fr; }
-          .hero-wrap { display:none; }
-          .title { font-size: 32px; }
+          .container { grid-template-columns: 1fr; padding:18px; }
+          .right-col { order: 2; }
         }
       `}</style>
     </div>
