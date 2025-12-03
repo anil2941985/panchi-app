@@ -1,65 +1,81 @@
 // pages/components/PlanCard.js
-import React from 'react';
+import React from "react";
 
-export default function PlanCard({ summary = {} }) {
-  // summary: { query, mode, date }
-  const { query = 'your trip', mode = 'flights', date = null } = summary;
+/**
+ * Simple, server-safe PlanCard component.
+ * Exports a default React component that is safe for Next.js prerender.
+ *
+ * Props:
+ *  - title (string)
+ *  - subtitle (string)
+ *  - range (string)
+ *  - tag (string) optional
+ */
 
+export default function PlanCard({ title = "Place", subtitle = "", range = "", tag = "Popular" }) {
   return (
-    <div className="plan-card" role="region" aria-label="Plan summary">
-      <div className="plan-head">
-        <div>
-          <div className="muted small">Plan for</div>
-          <div className="big">{query}</div>
+    <div className="plan-card" role="article" aria-label={title}>
+      <div className="left">
+        <div className="meta">
+          <span className="tag">{tag}</span>
         </div>
-        <div className="badge">
-          <div className="line">Mode</div>
-          <div className="bold">{mode}</div>
-        </div>
+        <div className="title">{title}</div>
+        {subtitle && <div className="subtitle">{subtitle}</div>}
       </div>
 
-      <div className="plan-body">
-        <div className="row">
-          <div className="label">Best travel day</div>
-          <div className="value">{date || 'Anytime — flexible'}</div>
-        </div>
-
-        <div className="row">
-          <div className="label">Nudges</div>
-          <div className="value">Check weather & events — avoid peak nights</div>
-        </div>
-
-        <div className="cta-row">
-          <button className="btn-outline">Save plan</button>
-          <button className="btn-primary">Open details →</button>
-        </div>
+      <div className="right">
+        <div className="range">{range}</div>
+        <button className="explore" aria-label={`Explore ${title}`}>Explore</button>
       </div>
 
       <style jsx>{`
         .plan-card {
-          background: linear-gradient(180deg,#ffffff, #fbfbff);
-          border-radius: 12px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 18px;
           padding: 14px;
-          box-shadow: 0 8px 24px rgba(16,24,40,0.06);
-          margin-bottom: 12px;
+          border-radius: 12px;
+          background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(250,250,252,0.9));
+          box-shadow: 0 12px 30px rgba(12,15,20,0.04);
+          border: 1px solid rgba(16,24,40,0.04);
+          min-width: 220px;
         }
-        .plan-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
-        .muted.small { color:#6b7280; font-size:12px; }
-        .big { font-weight:700; font-size:18px; margin-top:6px; }
-        .badge { text-align:right; }
-        .badge .line { font-size:12px; color:#70767a; }
-        .badge .bold { font-weight:700; color:#111827; }
 
-        .plan-body { margin-top:12px; }
-        .row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed rgba(16,24,40,0.03); }
-        .label { color:#6b7280; }
-        .value { font-weight:600; color:#111827; }
+        .left { display:flex; flex-direction:column; gap:6px; flex:1; min-width:0; }
+        .meta { display:flex; gap:8px; align-items:center; }
+        .tag {
+          display:inline-block;
+          padding:6px 8px;
+          font-size:12px;
+          border-radius:999px;
+          background:linear-gradient(90deg,#f3f2ff,#f9e7ff);
+          color:#5b21b6;
+          font-weight:700;
+        }
 
-        .cta-row { display:flex; gap:8px; margin-top:12px; }
-        .btn-outline { background:#fff; border:1px solid rgba(16,24,40,0.06); padding:8px 12px; border-radius:10px; cursor:pointer; }
-        .btn-primary { background: linear-gradient(90deg,#7a4fff,#ff6fb4); color:#fff; padding:8px 12px; border-radius:10px; border:none; cursor:pointer; }
-        @media (max-width:640px){ .plan-card{padding:12px} .big{font-size:16px} }
+        .title { font-weight:800; font-size:16px; color:#0f172a; line-height:1.05; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .subtitle { color:#6b7280; font-size:13px; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+        .right { display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+        .range { font-weight:700; color:#0f172a; font-size:14px; }
+        .explore {
+          background: linear-gradient(90deg, #7c4dff, #ff6b9a);
+          color:white;
+          padding:8px 12px;
+          border-radius:10px;
+          border:none;
+          font-weight:700;
+          cursor:pointer;
+          box-shadow: 0 10px 22px rgba(124,77,255,0.14);
+        }
+
+        @media (max-width: 640px) {
+          .plan-card { padding:10px; gap:12px; }
+          .title { font-size:15px; }
+          .range { font-size:13px; }
+        }
       `}</style>
     </div>
-  `);
+  );
 }
