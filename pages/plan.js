@@ -1,197 +1,177 @@
 // pages/plan.js
-import React, { useEffect, useState } from "react";
+import Head from "next/head";
 import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 
-/**
- * Simple inline PriceCard — self-contained to avoid imports
- */
-function PriceCard({ airline, depart, arrive, price, mood }) {
+function DatePill({ label, active, onClick }) {
   return (
-    <div className="planItem" role="article" aria-label={`${airline} ${depart} ${arrive}`}>
-      <div>
-        <div style={{ fontWeight: 700 }}>{airline}</div>
-        <div style={{ color: "#6b7280", fontSize: 13 }}>{depart} → {arrive}</div>
-        <div style={{ fontSize: 12, color: "#888", marginTop: 8 }}>Mood: {mood}</div>
-      </div>
-      <div style={{ textAlign: "right" }}>
-        <div className="planPrice">₹{price}</div>
-        <button className="btnBook" style={{ marginTop: 8 }}>Book</button>
-      </div>
-    </div>
+    <button className={`date-pill ${active ? "active" : ""}`} onClick={onClick}>
+      {label}
+      <style jsx>{`
+        .date-pill { background:#f1f5f9; border-radius:12px; padding:8px 12px; border:0; font-weight:600; cursor:pointer; }
+        .date-pill.active { background: linear-gradient(90deg,#9f4cf3,#ff6fb2); color:#fff; box-shadow:0 8px 30px rgba(159,76,243,0.12); }
+      `}</style>
+    </button>
   );
 }
 
-/**
- * Embedded decorative HeroBlob (same as index)
- */
-function HeroBlob() {
+function PlanCard({ item }) {
   return (
-    <div className="hero-blob" aria-hidden>
-      <svg viewBox="0 0 400 260" width="400" height="260" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="g1b" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stopColor="#ffd6f0" stopOpacity="0.95" />
-            <stop offset="50%" stopColor="#caa7ff" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="#b3f0ff" stopOpacity="0.85" />
-          </linearGradient>
-          <filter id="blurMeB" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation="26" />
-          </filter>
-        </defs>
-        <g filter="url(#blurMeB)">
-          <path
-            d="M84 12c45-8 110 2 156 28 46 26 74 84 60 134-14 50-71 80-120 90-49 9-99-6-142-30C20 201 3 146 15 106 27 66 44 28 84 12z"
-            fill="url(#g1b)"
-            opacity="0.95"
-          />
-        </g>
-      </svg>
+    <div className="plan-card">
+      <div>
+        <div className="carrier">{item.airline}</div>
+        <div className="time">{item.from} {item.depart} → {item.to} {item.arrive} · {item.duration}</div>
+        <div className="mood">Mood: <strong>{item.mood}</strong></div>
+      </div>
+
+      <div className="price-block">
+        <div className="price">₹{item.price}</div>
+        <button className="book">Book</button>
+      </div>
+
+      <style jsx>{`
+        .plan-card { display:flex; justify-content:space-between; gap:18px; padding:20px; border-radius:12px; background:#fff; box-shadow:0 8px 20px rgba(12,18,55,0.04); margin-bottom:16px; align-items:center;}
+        .carrier { font-weight:700; font-size:18px; margin-bottom:6px;}
+        .time { color:#475569; font-size:14px; margin-bottom:8px;}
+        .mood { color:#64748b; font-size:13px;}
+        .price-block { text-align:right; display:flex; flex-direction:column; gap:8px; align-items:flex-end;}
+        .price { font-weight:800; font-size:18px; }
+        .book { border-radius:10px; border:1px solid rgba(12,18,55,0.08); background:#fff; padding:8px 12px; cursor:pointer;}
+      `}</style>
     </div>
   );
 }
 
 export default function PlanPage() {
   const router = useRouter();
-  const q = router.query.destination || "Goa";
-
+  const { destination = "Goa" } = router.query;
+  const [dateIndex, setDateIndex] = useState(0);
+  const [mode, setMode] = useState("flights");
+  const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [results, setResults] = useState([]);
 
-  // Try to fetch real API; fallback to mock if it fails
+  const dates = ["29/11","30/11","01/12","02/12","03/12","04/12","05/12"];
+
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
-        // Replace this endpoint with your real API: /api/search?destination=...
-        const res = await fetch(`/api/search?destination=${encodeURIComponent(q)}`, { cache: "no-store" });
-        if (!res.ok) throw new Error("no-api");
+        // try fetch from API (if you have one)
+        const res = await fetch(`/api/plans?destination=${encodeURIComponent(destination)}`);
+        if (!res.ok) throw new Error("no api");
         const data = await res.json();
-        if (Array.isArray(data?.results)) {
-          setResults(data.results);
-          setLoading(false);
-          return;
-        }
-        throw new Error("bad-data");
+        setPlans(data.plans || []);
       } catch (err) {
         // fallback mock data
-        setResults([
-          { id: "r1", airline: "IndiAir", depart: "DEL 06:00", arrive: "Goa 08:05 · 2h 5m", price: 3499, mood: "GOOD" },
-          { id: "r2", airline: "SkyWays", depart: "DEL 09:00", arrive: "Goa 11:05 · 2h 5m", price: 4299, mood: "FAIR" },
-          { id: "r3", airline: "BudgetAir", depart: "DEL 17:15", arrive: "Goa 19:20 · 2h 5m", price: 2999, mood: "GOOD" },
+        setPlans([
+          { id:1, airline:"IndiAir", from:"DEL 06:00", depart:"", to:"Goa 08:05", arrive:"", duration:"2h 5m", mood:"GOOD", price:3499 },
+          { id:2, airline:"SkyWays", from:"DEL 09:00", depart:"", to:"Goa 11:05", arrive:"", duration:"2h 5m", mood:"FAIR", price:4299 },
+          { id:3, airline:"BudgetAir", from:"DEL 17:15", depart:"", to:"Goa 19:20", arrive:"", duration:"2h 5m", mood:"FAIR", price:2999 },
         ]);
+      } finally {
         setLoading(false);
       }
     }
     load();
-  }, [q]);
+  }, [destination, mode]);
 
   return (
-    <div className="page">
-      <header className="hero">
-        <div className="hero-inner">
-          <div className="brand">
-            <img src="/images/panchi-default.png" alt="Panchi" />
-            <div>
-              <div style={{ fontWeight: 700 }}>Panchi</div>
-              <div style={{ color: "#6b7280", fontSize: 13 }}>Your AI-powered wings for every journey</div>
+    <>
+      <Head>
+        <title>Plan — {destination} | Panchi</title>
+      </Head>
+
+      <main className="page">
+        <div className="container">
+          <div className="headerRow">
+            <div className="brandLeft">
+              <img src="/logo.png" alt="Panchi" />
+              <div>
+                <div className="brandName">Panchi</div>
+                <div className="brandTag">Your AI-powered wings for every journey</div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        <h1 className="headline">Where are we going next?</h1>
-        <p className="subtitle">Panchi synthesizes price, events, weather and community feedback to nudge you in realtime.</p>
-
-        <div className="searchRow">
-          <div className="searchInput">
-            <input defaultValue={q} placeholder='Try "Goa", "Manali", "Jaipur"' />
-          </div>
-          <button className="cta" onClick={() => router.push(`/plan?destination=${encodeURIComponent(q)}`)}>Let Panchi plan →</button>
-        </div>
-
-        <HeroBlob />
-      </header>
-
-      <main className="container">
-        <section className="card">
-          <h3>Find the best options for {q}</h3>
-          <p style={{ color: "#6b7280" }}>Mode: <strong>flights</strong></p>
-
-          <div style={{ marginTop: 12 }}>
-            <button className="datePill active">29/11</button>
-            <button className="datePill">30/11</button>
-            <button className="datePill">01/12</button>
-            <div style={{ marginTop: 12 }}>
-              <button className="tab active">Flights</button>
-              <button className="tab">Trains</button>
-              <button className="tab">Cabs</button>
+            <div className="pageTitle">
+              <h1>Where are we going next?</h1>
+              <p className="subtitle">Panchi will find the smartest, safest and cheapest ways to reach <strong>{destination}</strong> — starting with flights in this MVP.</p>
             </div>
           </div>
 
-          <div style={{ marginTop: 20 }}>
-            {loading && <div style={{ color: "#6b7280" }}>Loading options…</div>}
+          <div className="contentRow">
+            <div className="left">
+              <div className="panel">
+                <div className="panel-head">
+                  <h3>Find the best options for {destination}</h3>
+                  <div className="mode">Mode: <strong>{mode}</strong></div>
+                </div>
 
-            {!loading && results.length === 0 && (
-              <div style={{ color: "#6b7280" }}>No results found for {q}.</div>
-            )}
+                <div className="dates">
+                  {dates.map((d, idx) => (
+                    <DatePill key={d} label={d} active={idx===dateIndex} onClick={() => setDateIndex(idx)} />
+                  ))}
+                </div>
 
-            {!loading && results.map(r => (
-              <PriceCard
-                key={r.id || r.airline + r.price}
-                airline={r.airline}
-                depart={r.depart}
-                arrive={r.arrive}
-                price={r.price}
-                mood={r.mood || "UNKNOWN"}
-              />
-            ))}
+                <div className="modes" style={{marginTop:14}}>
+                  <button className={`tab ${mode==='flights'?'active':''}`} onClick={() => setMode('flights')}>Flights</button>
+                  <button className={`tab ${mode==='trains'?'active':''}`} onClick={() => setMode('trains')}>Trains</button>
+                  <button className={`tab ${mode==='cabs'?'active':''}`} onClick={() => setMode('cabs')}>Cabs</button>
+                </div>
+
+                <div style={{marginTop:18}}>
+                  {loading && <div className="loading">Loading options…</div>}
+                  {!loading && plans.map((p) => <PlanCard key={p.id} item={p} />)}
+                </div>
+              </div>
+            </div>
+
+            <aside className="right">
+              <div className="sidebar">
+                <h4>Nudges & alerts</h4>
+                <ul>
+                  <li><strong>Rain alert — Baga / Calangute</strong><div className="muted">Light rain Saturday evening; prefer inland stays for a quiet morning.</div></li>
+                  <li><strong>Price surge likely next Fri</strong><div className="muted">Searches spiking for DEL → GOI. Book early to save ~10–18%.</div></li>
+                  <li><strong>Traffic at Delhi T3 (Evening)</strong><div className="muted">Allow 30–45 mins extra to reach the airport.</div></li>
+                </ul>
+              </div>
+            </aside>
           </div>
-        </section>
-
-        <aside className="nudges">
-          <h4>Nudges & alerts</h4>
-          <ul>
-            <li><strong>Rain alert — Baga / Calangute</strong><div style={{ color: "#6b7280" }}>Light rain Saturday evening; prefer inland stays for a quiet morning.</div></li>
-            <li style={{ marginTop: 10 }}><strong>Price surge likely next Fri</strong><div style={{ color: "#6b7280" }}>Searches spiking for DEL → GOI. Book early to save ~10–18%.</div></li>
-            <li style={{ marginTop: 10 }}><strong>Traffic at Delhi T3 (Evening)</strong><div style={{ color: "#6b7280" }}>Allow 30–45 mins extra to reach the airport during evening rush.</div></li>
-          </ul>
-        </aside>
+        </div>
       </main>
 
-      <style jsx global>{`
-        :root{
-          --accentA: #7f3aea;
-          --accentB: #ff4da6;
-          --bg-start: #f6faff;
-          --bg-end: #fff6fb;
+      <style jsx>{`
+        .container { max-width:1200px; margin:28px auto; padding:18px; }
+        .headerRow { display:flex; gap:18px; align-items:flex-start; }
+        .brandLeft { display:flex; gap:12px; align-items:center; }
+        .brandLeft img { height:42px; }
+        .brandName { font-weight:700; }
+        .brandTag { color:#64748b; font-size:13px; }
+
+        .pageTitle { flex:1; }
+        .pageTitle h1 { margin:6px 0; font-size:40px; }
+        .subtitle { color:#64748b; margin-top:6px; }
+
+        .contentRow { display:flex; gap:22px; margin-top:18px; align-items:flex-start; }
+        .left { flex:1; }
+        .panel { background:#fff; border-radius:12px; padding:18px; box-shadow:0 12px 40px rgba(12,18,55,0.04); }
+        .panel-head { display:flex; justify-content:space-between; align-items:center; }
+        .dates { margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; }
+        .tab { margin-top:12px; border:0; background:#f1f5f9; padding:8px 12px; border-radius:10px; cursor:pointer; margin-right:8px; }
+        .tab.active { background:linear-gradient(90deg,#9f4cf3,#ff6fb2); color:#fff; box-shadow:0 8px 30px rgba(159,76,243,0.12); }
+
+        .right { width:320px; }
+        .sidebar { padding:18px; border-radius:12px; background:#fff; box-shadow:0 12px 40px rgba(12,18,55,0.04); }
+        .sidebar h4 { margin:0 0 8px 0; }
+        .muted { color:#64748b; font-size:13px; margin-top:6px; }
+
+        .loading { color:#64748b; padding:12px 0; }
+
+        @media (max-width:980px) {
+          .contentRow { flex-direction:column; }
+          .right { width:100%; }
         }
-        html,body,#__next{height:100%}
-        body{margin:0;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;background:
-           radial-gradient(600px 240px at 6% 8%, rgba(127,58,234,0.04), transparent 10%),
-           radial-gradient(460px 180px at 92% 10%, rgba(255,77,166,0.03), transparent 8%),
-           linear-gradient(180deg, var(--bg-start), var(--bg-end));}
-        .hero{padding:36px 48px;position:relative;overflow:visible}
-        .hero-inner{display:flex;align-items:center;justify-content:space-between}
-        .brand{display:flex;gap:12px;align-items:center}
-        .brand img{height:54px;width:auto}
-        .headline{font-size:56px;margin:6px 0 6px 0;color:#0f172a;font-weight:800}
-        .subtitle{color:#6b7280;margin:0 0 20px 0}
-        .searchRow{display:flex;gap:16px;align-items:center;margin-top:12px}
-        .searchInput{flex:1;background:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 8px 30px rgba(12,18,55,0.04);border:1px solid rgba(12,18,55,0.03)}
-        .searchInput input{border:0;outline:0;width:100%;font-size:16px}
-        .cta{display:inline-flex;align-items:center;padding:12px 18px;border-radius:12px;background:linear-gradient(90deg,var(--accentA) 0%,var(--accentB) 70%);color:#fff;border:0;font-weight:700;cursor:pointer;box-shadow:0 14px 40px rgba(127,58,234,0.12)}
-        .hero-blob{position:absolute;right:48px;top:18px;width:320px;height:210px;pointer-events:none;opacity:.95}
-        .container{display:grid;grid-template-columns:1fr 360px;gap:28px;padding:20px 48px 80px}
-        .card{background:#fff;border-radius:16px;padding:22px;box-shadow:0 10px 30px rgba(12,18,55,0.04);border:1px solid rgba(12,18,55,0.03)}
-        .nudges{background:#fff;border-radius:16px;padding:18px;box-shadow:0 10px 30px rgba(12,18,55,0.04);border:1px solid rgba(12,18,55,0.03)}
-        .datePill{display:inline-block;padding:8px 12px;margin-right:8px;border-radius:12px;background:rgba(9,10,11,0.03);color:#0f172a;border:1px solid rgba(12,18,55,0.04);font-weight:600;cursor:pointer}
-        .datePill.active{color:#fff;background:linear-gradient(90deg,var(--accentA),var(--accentB));box-shadow:0 18px 50px rgba(127,58,234,0.14);border:none}
-        .tab{display:inline-block;padding:8px 12px;margin-right:8px;border-radius:12px;border:1px solid rgba(12,18,55,0.04);background:transparent;font-weight:600;cursor:pointer}
-        .tab.active{background:linear-gradient(90deg,#9f4cf3 0%, #ff6fb2 70%);color:white;box-shadow:0 12px 40px rgba(127,58,234,0.12);transform:translateY(-2px)}
-        .planItem{display:flex;align-items:center;gap:16px;justify-content:space-between;padding:18px;margin:14px 0;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.95));box-shadow:0 6px 20px rgba(12,18,55,0.03);border:1px solid rgba(12,18,55,0.03)}
-        .planPrice{font-weight:800;font-size:20px}
-        .btnBook{background:#fff;border-radius:8px;padding:8px 10px;border:1px solid rgba(12,18,55,0.06);box-shadow:0 4px 10px rgba(12,18,55,0.03);cursor:pointer}
-        @media (max-width:980px){ .container{grid-template-columns:1fr} .hero-blob{display:none} .headline{font-size:34px} }
       `}</style>
-    </div>
+    </>
   );
 }
