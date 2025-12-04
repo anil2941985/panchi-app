@@ -17,7 +17,98 @@
   --radius-md: 12px;
   --glass-border: rgba(255,255,255,0.8);
 }
+/* Vibrant palette + textural background */
+:root{
+  --accentA: #7f3aea;  /* purple */
+  --accentB: #ff4da6;  /* pink */
+  --accentC: #4ac7ff;  /* cyan highlight (optional) */
+  --bg-start: #f5f8ff;
+  --bg-end: #fff7fb;
+  --card: #ffffff;
+  --muted: #6b7280;
+}
 
+/* subtle background texture + gradient */
+body, .page {
+  background:
+    /* faint diagonal texture (small, clipped) */
+    linear-gradient(120deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.35) 100%),
+    radial-gradient(900px 300px at 8% 10%, rgba(127,58,234,0.06), transparent 8%),
+    linear-gradient(180deg, var(--bg-start), var(--bg-end));
+  /* subtle soft noise - use only if small/no heavy perf impact */
+  background-blend-mode: overlay, normal, normal;
+}
+
+/* CTA: stronger gradient, crisp shadow */
+.cta {
+  background: linear-gradient(90deg, var(--accentA), var(--accentB));
+  color: #fff;
+  font-weight: 800;
+  border-radius: 12px;
+  padding: 12px 20px;
+  box-shadow:
+    0 12px 30px rgba(127,58,234,0.16),
+    0 2px 6px rgba(9,10,12,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: transform .18s cubic-bezier(.2,.9,.2,1), box-shadow .18s;
+  text-decoration: none;
+  display:inline-block;
+}
+
+/* CTA hover / focus */
+.cta:hover, .cta:focus {
+  transform: translateY(-3px);
+  box-shadow:
+    0 26px 60px rgba(127,58,234,0.18),
+    0 6px 18px rgba(12,18,55,0.06);
+  outline: none;
+}
+
+/* make sure CTA is visible even if other rules try to dim it */
+.cta{ background-clip: padding-box; }
+
+/* Date pill active gradient */
+.datePill.active {
+  background: linear-gradient(90deg, var(--accentA), var(--accentB));
+  color: white;
+  box-shadow: 0 8px 30px rgba(127,58,234,0.12), inset 0 -2px 4px rgba(0,0,0,0.03);
+  border: none;
+}
+
+/* Add small colorful outline for focus accessibility */
+.datePill:focus {
+  outline: 3px solid rgba(124,59,232,0.14);
+  outline-offset: 3px;
+}
+
+/* Tab style (Flights/Trains/Cabs) */
+.tab.active {
+  background: linear-gradient(90deg, #9f4cf3 0%, #ff6fb2 70%);
+  color: white;
+  box-shadow: 0 16px 40px rgba(127,58,234,0.12);
+  transform: translateY(-2px);
+}
+
+/* Right-top decorative box (remove if unwanted) */
+.hero .decorBox { display:none; } /* hide that unnecessary box */
+
+/* Optional texture: subtle grain (base64 tiny PNG) - uncomment if you want */
+.page::after{
+  /* content: ""; 
+  position: fixed; inset:0;
+  pointer-events:none;
+  background-image: url('data:image/png;base64,iVBORw0K...'); 
+  opacity: .06; */
+}
+
+/* Ensure text on gradient is readable */
+.cta, .datePill.active, .tab.active { text-shadow: 0 1px 0 rgba(0,0,0,0.06) }
+
+/* Mobile tweaks */
+@media (max-width: 760px){
+  .cta{ min-width: 110px; padding:10px 14px; font-size:14px }
+  .headline { font-size:34px; }
+}
 /* page base */
 html,body,#__next{ height:100%; background: linear-gradient(180deg,#f3f7ff 0,#fff 100%); font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
 body { margin:0; color:#111827; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
