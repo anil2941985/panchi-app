@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 
 export default function Home() {
-  const [query, setQuery] = useState("");
-  const quickPicks = [
+  const [q, setQ] = useState("");
+
+  const picks = [
     { id: 1, label: "Goa — beaches under ₹5k", slug: "/plan?destination=Goa" },
     { id: 2, label: "Manali — hill escapes", slug: "/plan?destination=Manali" },
     { id: 3, label: "Jaipur — heritage breaks", slug: "/plan?destination=Jaipur" },
@@ -15,85 +16,97 @@ export default function Home() {
     <>
       <Head>
         <title>Panchi — Where are we going next?</title>
-        <meta name="description" content="Panchi finds the smartest, safest and cheapest ways to reach your destination." />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
       </Head>
 
-      <main className="page">
+      <main className="root">
         <header className="hero">
           <div className="hero-inner">
-            <div className="brand">
-              <img src="/logo.png" alt="Panchi" />
-              <div className="brand-text">
-                <div className="brand-title">Panchi</div>
-                <div className="brand-sub">Your AI-powered wings for every journey</div>
+            <div className="hero-left">
+              <div className="brand">
+                <img src="/logo.png" alt="Panchi" className="logo" />
+                <div className="brand-text">
+                  <div className="brand-name">Panchi</div>
+                  <div className="brand-tag">Your AI-powered wings for every journey</div>
+                </div>
               </div>
-            </div>
 
-            <div className="hero-body">
-              <h1 className="headline">Where are we going next?</h1>
-              <p className="lead">Panchi synthesizes price, events, weather and community feedback to nudge you in realtime.</p>
+              <h1 className="title">Where are we going next?</h1>
+              <p className="subtitle">Panchi synthesizes price, events, weather and community feedback to nudge you in realtime.</p>
 
               <div className="search-row">
                 <input
-                  className="searchInput"
+                  aria-label="Search destination"
                   placeholder='Try "Goa", "Manali", "Jaipur", "beach under 5k"'
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  className="search"
                 />
-                <Link href={`/plan?destination=${encodeURIComponent(query || "Goa")}`}>
-                  <a className="cta" aria-label="Let Panchi plan">Let Panchi plan →</a>
+                <Link href={`/plan?destination=${encodeURIComponent(q || "Goa")}`}>
+                  <a className="cta">Let Panchi plan →</a>
                 </Link>
               </div>
-
             </div>
 
+            {/* decorative gradient panel kept subtle and anchored, not floating */}
             <div className="hero-accent" aria-hidden="true" />
           </div>
         </header>
 
-        <section className="container quick-picks">
-          <h3>Quick picks</h3>
-          <div className="desc">Popular destinations and curated offers for you.</div>
+        <section className="container picks">
+          <div className="panel">
+            <div className="panel-head">
+              <h3>Quick picks</h3>
+              <p className="panel-desc">Popular destinations and curated offers for you.</p>
+            </div>
 
-          <div className="quick-pills">
-            {quickPicks.map((p) => (
-              <Link key={p.id} href={p.slug}>
-                <a className="quick-pill">{p.label}</a>
-              </Link>
-            ))}
+            <div className="pills">
+              {picks.map((p) => (
+                <Link key={p.id} href={p.slug}>
+                  <a className="pill">{p.label}</a>
+                </Link>
+              ))}
+            </div>
           </div>
         </section>
       </main>
 
       <style jsx>{`
-        .page { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; color:#0f1724; }
-        .hero { padding: 36px 18px 40px; background: linear-gradient(180deg,#f7f9ff 0%, #fff 70%); position:relative; overflow:visible; }
-        .hero-inner { max-width:1260px; margin:0 auto; display:flex; gap:24px; align-items:flex-start; justify-content:space-between; }
-        .brand { display:flex; align-items:center; gap:14px; }
-        .brand img { height:46px; width:auto; object-fit:contain; }
-        .brand-text .brand-title { font-weight:700; font-size:18px; }
-        .brand-sub { color:#64748b; font-size:13px; margin-top:2px; }
+        :global(body) { margin:0; background:linear-gradient(180deg,#fbfdff 0%, #fff 40%, #fffafa 100%); font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; color:#0b1220; }
 
-        .hero-body { flex:1; min-width:0; }
-        .headline { font-size: clamp(34px, 6vw, 56px); margin:6px 0; line-height:1.02; font-weight:800; color:#0b1220; }
-        .lead { color:#475569; margin-bottom:12px; font-size:15px; }
+        .root { min-height:100vh; }
 
-        .search-row { display:flex; gap:14px; align-items:center; margin-top:12px; }
-        .searchInput { flex:1; min-width:240px; padding:12px 16px; border-radius:14px; border:1px solid rgba(12,18,55,0.06); box-shadow:0 12px 30px rgba(12,18,55,0.04); background:#fff; }
-        .cta { display:inline-block; background:linear-gradient(90deg,#7f3aea 0%, #ff4da6 70%); color:#fff; padding:12px 18px; border-radius:12px; text-decoration:none; font-weight:700; box-shadow:0 18px 40px rgba(127,58,234,0.14); }
+        .hero { padding:28px 20px 36px; }
+        .hero-inner { max-width:1200px; margin:0 auto; display:flex; gap:28px; align-items:flex-start; position:relative; }
 
-        .hero-accent { position:absolute; right:40px; top:34px; width:260px; height:180px; background: radial-gradient(closest-side, rgba(159,76,243,0.18), rgba(255,77,166,0.08) 60%, transparent 70%); filter: blur(18px); border-radius:50%; pointer-events:none; box-shadow:0 20px 50px rgba(159,76,243,0.06); }
+        .hero-left { flex:1; min-width:0; }
+        .brand { display:flex; gap:12px; align-items:center; margin-bottom:6px; }
+        .logo { height:46px; width:auto; object-fit:contain; }
+        .brand-name { font-weight:700; }
+        .brand-tag { color:#60708a; font-size:13px; margin-top:2px; }
 
-        .container { max-width:1260px; margin:24px auto; padding:18px; }
-        .quick-picks { padding:22px; border-radius:14px; background:linear-gradient(180deg,#fff,#fff); box-shadow:0 12px 40px rgba(12,18,55,0.04); }
-        .quick-picks h3 { margin:0 0 6px; }
-        .desc { color:#64748b; margin-bottom:12px; }
-        .quick-pills { display:flex; gap:12px; flex-wrap:wrap; }
-        .quick-pill { background:linear-gradient(90deg,#9f4cf3,#ff6fb2); color:#fff; padding:10px 14px; border-radius:999px; font-weight:700; text-decoration:none; box-shadow:0 10px 30px rgba(127,58,234,0.09); }
+        .title { font-size:clamp(32px,5vw,56px); margin:4px 0 6px; line-height:1.03; font-weight:800; }
+        .subtitle { color:#6b788f; margin:0 0 14px; }
+
+        .search-row { display:flex; gap:12px; align-items:center; margin-top:10px; }
+        .search { flex:1; padding:14px 16px; border-radius:14px; border:1px solid rgba(12,18,55,0.06); background:#fff; box-shadow:0 12px 30px rgba(12,18,55,0.04); font-size:15px; }
+        .cta { padding:12px 18px; background:linear-gradient(90deg,#7f3aea 0%, #ff4da6 70%); color:white; border-radius:12px; text-decoration:none; font-weight:700; box-shadow:0 10px 30px rgba(127,58,234,0.12); }
+
+        /* subtle, anchored accent (not floating over content) */
+        .hero-accent { width:200px; height:160px; border-radius:22px; background:linear-gradient(180deg, rgba(159,76,243,0.16), rgba(255,77,166,0.08)); margin-left:12px; box-shadow:0 18px 40px rgba(159,76,243,0.06); }
+
+        .container { max-width:1200px; margin:28px auto; padding:0 20px; }
+        .panel { background:#fff; border-radius:14px; padding:18px 22px; box-shadow:0 20px 60px rgba(12,18,55,0.04); display:flex; flex-direction:column; gap:14px; }
+        .panel-head { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+        .panel-desc { color:#7b8799; margin:0; }
+
+        .pills { display:flex; gap:12px; flex-wrap:wrap; margin-top:6px; }
+        .pill { background:linear-gradient(90deg,#9f4cf3,#ff6fb2); color:white; padding:10px 14px; border-radius:999px; font-weight:700; text-decoration:none; box-shadow:0 8px 28px rgba(159,76,243,0.09); }
 
         @media (max-width:880px) {
-          .hero-inner { flex-direction:column; align-items:flex-start; gap:12px; }
-          .hero-accent { right:12px; top:8px; width:160px; height:110px; filter:blur(14px); }
+          .hero-inner { flex-direction:column; align-items:flex-start; }
+          .hero-accent { display:none; }
+          .panel-head { flex-direction:column; align-items:flex-start; gap:8px; }
         }
       `}</style>
     </>
