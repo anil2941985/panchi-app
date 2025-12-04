@@ -22,7 +22,6 @@ export default function Plan() {
         const json = await res.json();
         setPlans(json.plans || []);
       } catch (e) {
-        // Mock fallback so build never fails
         setPlans([
           { id: 1, airline: "IndiAir", from: "DEL 06:00", to: `${destination} 08:05`, duration: "2h 5m", mood: "GOOD", price: 3499 },
           { id: 2, airline: "SkyWays", from: "DEL 09:00", to: `${destination} 11:05`, duration: "2h 5m", mood: "FAIR", price: 4299 },
@@ -38,17 +37,17 @@ export default function Plan() {
     <>
       <Head><title>Plan — {destination} | Panchi</title></Head>
 
-      <div className="wrap">
+      <div className="plan-root">
         <div className="top">
           <div className="brand">
             <img src="/logo.png" alt="Panchi" />
-            <div>
+            <div className="brand-info">
               <div className="brand-title">Panchi</div>
               <div className="brand-sub">Your AI-powered wings for every journey</div>
             </div>
           </div>
 
-          <div className="hero-title">
+          <div className="hero">
             <h1>Where are we going next?</h1>
             <p>Panchi will find the smartest, safest and cheapest ways to reach <strong>{destination}</strong> — starting with flights in this MVP.</p>
           </div>
@@ -64,8 +63,8 @@ export default function Plan() {
 
               <div className="controls">
                 <div className="dates">
-                  {dates.map((d,i) => (
-                    <button key={d} className={`date ${i===activeDate ? "active" : ""}`} onClick={()=>setActiveDate(i)}>{d}</button>
+                  {dates.map((d,i)=>(
+                    <button key={d} className={`date ${i===activeDate?'active':''}`} onClick={()=>setActiveDate(i)}>{d}</button>
                   ))}
                 </div>
 
@@ -79,7 +78,7 @@ export default function Plan() {
               <div className="results">
                 {loading ? <div className="loading">Loading options…</div> : plans.map(p => (
                   <div className="plan-card" key={p.id}>
-                    <div className="left">
+                    <div>
                       <div className="carrier">{p.airline}</div>
                       <div className="times">{p.from} → {p.to} · {p.duration}</div>
                       <div className="mood">Mood: <strong>{p.mood}</strong></div>
@@ -95,7 +94,7 @@ export default function Plan() {
           </main>
 
           <aside className="sidebar">
-            <div className="panel side">
+            <div className="panel nudges">
               <h4>Nudges & alerts</h4>
               <ul>
                 <li><strong>Rain alert — Baga / Calangute</strong><div className="muted">Light rain Saturday evening; prefer inland stays for a quiet morning.</div></li>
@@ -109,19 +108,17 @@ export default function Plan() {
 
       <style jsx>{`
         :global(body){ margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial; background:linear-gradient(180deg,#fbfdff 0%, #fff 48%, #fff7f5 100%); color:#071226; }
-        .wrap{ max-width:1200px; margin:20px auto; padding:18px; }
-        .top{ display:flex; gap:18px; align-items:flex-start; margin-bottom:14px; }
-        .brand img{ height:44px; margin-right:10px; }
+        .plan-root{ max-width:1200px; margin:20px auto; padding:18px; }
+        .top{ display:flex; gap:18px; align-items:center; margin-bottom:18px; }
+        .brand img{ height:44px; width:auto; }
         .brand-title{ font-weight:800; }
-        .brand-sub{ font-size:13px; color:#6b7788; }
+        .brand-sub{ color:#6b7788; font-size:13px; }
+        .hero h1{ font-size:44px; margin:0; }
+        .hero p{ color:#64748b; margin-top:6px; }
 
-        .hero-title h1{ font-size:44px; margin:0; }
-        .hero-title p{ color:#64748b; margin-top:6px; }
-
-        .layout{ display:grid; grid-template-columns:1fr 320px; gap:20px; margin-top:10px; }
-        .panel{ background:#fff; padding:18px; border-radius:12px; box-shadow:0 18px 60px rgba(12,18,55,0.04); }
-        .panel-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-        .dates{ display:flex; gap:10px; flex-wrap:wrap; }
+        .layout{ display:grid; grid-template-columns: 1fr 320px; gap:20px; }
+        .panel{ background:#fff; padding:18px; border-radius:12px; box-shadow:0 18px 50px rgba(12,18,55,0.04); }
+        .dates{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
         .date{ padding:8px 12px; border-radius:10px; border:0; background:#f1f5f9; cursor:pointer; }
         .date.active{ background:linear-gradient(90deg,#9f4cf3,#ff6fb2); color:#fff; box-shadow:0 12px 36px rgba(159,76,243,0.12); }
 
@@ -135,9 +132,8 @@ export default function Plan() {
         .book{ padding:8px 12px; border-radius:8px; border:1px solid rgba(12,18,55,0.06); background:white; cursor:pointer; }
 
         .muted{ color:#64748b; font-size:13px; margin-top:6px; }
-        @media (max-width:980px){
-          .layout{ grid-template-columns:1fr; }
-        }
+
+        @media (max-width:980px){ .layout{ grid-template-columns:1fr; } }
       `}</style>
     </>
   );
