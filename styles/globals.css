@@ -206,3 +206,127 @@ body {
 .hidden { display: none; }
 .text-muted { color: #6b7280; font-size: 0.95rem; }
 .center { text-align: center; }
+/* ===== Quick fixes (paste at end of styles/globals.css) ===== */
+
+/* tighten hero overall */
+.hero {
+  padding: 28px 36px;
+  position: relative;
+  overflow: visible;
+  background: linear-gradient(180deg, rgba(255,248,250,0.6), rgba(245,251,255,0.85));
+}
+
+/* center header content and limit width */
+.hero .hero-inner {
+  max-width: 1260px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+/* logo sizing and alignment */
+.brand img {
+  height: 48px;            /* smaller and consistent */
+  width: auto;
+  display: inline-block;
+  margin-right: 12px;
+  object-fit: contain;
+}
+
+/* textual brand */
+.brand .brand-text {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.brand .brand-title {
+  font-weight: 700;
+  font-size: 18px;
+  margin: 0;
+}
+.brand .brand-sub {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+/* hero headline */
+.headline {
+  font-size: clamp(34px, 6vw, 56px);
+  line-height: 1.02;
+  margin: 6px 0 8px 0;
+}
+
+/* remove the large floating blob: replace with a subtle accent (no hard box) */
+.hero-accent {
+  position: absolute;
+  right: 40px;
+  top: 34px;
+  width: 260px;
+  height: 180px;
+  pointer-events: none;
+  background: radial-gradient(closest-side, rgba(159,76,243,0.18), rgba(255,77,166,0.08) 60%, transparent 70%);
+  filter: blur(18px);
+  border-radius: 50%;
+  transform: translateZ(0);
+  box-shadow: 0 20px 50px rgba(159,76,243,0.06);
+}
+
+/* CTA button — make it fully visible and accessible */
+.cta {
+  background: linear-gradient(90deg,#7f3aea 0%, #ff4da6 70%);
+  color: #fff !important;
+  box-shadow: 0 18px 40px rgba(127,58,234,0.14);
+  border: 0;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+/* search input visual improvements */
+.searchInput {
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px 16px;
+  border: 1px solid rgba(12,18,55,0.04);
+  box-shadow: 0 12px 30px rgba(12,18,55,0.04);
+  min-width: 420px;
+}
+
+/* reduce giant empty vertical gap below hero */
+.hero + .section {
+  margin-top: 18px; /* was too large earlier */
+}
+
+/* Quick-picks card improvements */
+.quick-picks {
+  padding: 22px;
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(12,18,55,0.04);
+  background: linear-gradient(180deg,#ffffff,#fff9ff);
+  margin-top: 22px;
+}
+.quick-pills {
+  display:flex;
+  gap: 12px;
+  flex-wrap:wrap;
+  margin-top: 14px;
+}
+.quick-pill {
+  background: linear-gradient(90deg,#9f4cf3,#ff6fb2);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-weight:700;
+  box-shadow: 0 10px 30px rgba(127,58,234,0.09);
+}
+
+/* smaller screens adjustments */
+@media (max-width: 880px) {
+  .hero .hero-inner { flex-direction: column; align-items:flex-start; gap:12px; padding-right:12px; }
+  .hero-accent { right: 12px; top: 12px; width:160px; height:110px; filter: blur(14px); }
+  .searchInput { min-width: 100%; max-width: 100%; }
+  .headline { font-size: 32px; }
+}
