@@ -1,21 +1,35 @@
-// pages/components/Header.jsx
-import Link from "next/link";
+// components/Header.js
+import React from "react";
 
-export default function Header() {
+export default function Header({ onSearch }) {
   return (
-    <header className="py-5 px-6 bg-white/40 backdrop-blur">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <Link href="/">
-          <a className="flex items-center gap-3">
-            <img src="/panchi-logo.png" alt="Panchi" className="w-12 h-12 object-contain" />
-            <span className="font-bold text-lg">Panchi</span>
-          </a>
-        </Link>
-        <nav className="hidden md:flex gap-4 items-center">
-          <a className="text-sm text-gray-700">Explore</a>
-          <a className="text-sm text-gray-700">Plans</a>
-          <a className="text-sm text-gray-700">Community</a>
-        </nav>
+    <header className="hero">
+      <div className="hero-inner">
+        <div style={{display:'flex', alignItems:'center', gap:14}}>
+          <div className="brand">
+            {/* Use PNG logo file (public/logo.png). Adjust path if needed. */}
+            <img src="/logo.png" alt="Panchi" />
+          </div>
+          <div className="brand-text">
+            <p className="brand-title">Panchi</p>
+            <p className="brand-sub">Your AI-powered wings for every journey</p>
+          </div>
+        </div>
+
+        <div style={{flex:1, marginLeft:24, marginRight:18}}>
+          <h1 className="headline">Where are we going next?</h1>
+          <p className="subtitle">Panchi finds the smartest, safest and cheapest ways to reach your destination — starting with flights in this MVP.</p>
+
+          <div className="searchRow" style={{marginTop:12}}>
+            <div className="searchInput" role="search" aria-label="Search destination">
+              <input type="text" placeholder='Try "Goa", "Manali", "Jaipur", "beach under 5k"' />
+            </div>
+            <button className="cta" onClick={onSearch}>Let Panchi plan →</button>
+          </div>
+        </div>
+
+        {/* accent (purely decorative — CSS controls look) */}
+        <div className="hero-accent" aria-hidden="true" />
       </div>
     </header>
   );
