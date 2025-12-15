@@ -1,139 +1,104 @@
-// pages/plan.js
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useState } from "react";
 
 export default function Plan() {
-  const router = useRouter();
-  const { destination = "Goa" } = router.query;
-  const dates = ["29/11","30/11","01/12","02/12","03/12","04/12","05/12"];
-  const [activeDate, setActiveDate] = useState(0);
-  const [mode, setMode] = useState("flights");
-  const [plans, setPlans] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { query } = useRouter();
+  const destination = query.destination || "Goa";
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/plans?destination=${encodeURIComponent(destination)}`);
-        if (!res.ok) throw new Error("no-api");
-        const json = await res.json();
-        setPlans(json.plans || []);
-      } catch (e) {
-        setPlans([
-          { id: 1, airline: "IndiAir", from: "DEL 06:00", to: `${destination} 08:05`, duration: "2h 5m", mood: "GOOD", price: 3499 },
-          { id: 2, airline: "SkyWays", from: "DEL 09:00", to: `${destination} 11:05`, duration: "2h 5m", mood: "FAIR", price: 4299 },
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [destination, mode]);
+  const [mode, setMode] = useState("flights");
 
   return (
     <>
-      <Head><title>Plan — {destination} | Panchi</title></Head>
+      <Head>
+        <title>Panchi – Plan for {destination}</title>
+      </Head>
 
-      <div className="plan-root">
-        <div className="top">
-          <div className="brand">
-            <img src="/logo.png" alt="Panchi" />
-            <div className="brand-info">
-              <div className="brand-title">Panchi</div>
-              <div className="brand-sub">Your AI-powered wings for every journey</div>
-            </div>
-          </div>
-
-          <div className="hero">
-            <h1>Where are we going next?</h1>
-            <p>Panchi will find the smartest, safest and cheapest ways to reach <strong>{destination}</strong> — starting with flights in this MVP.</p>
+      <header className="container" style={{ paddingTop: 32 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <img src="/logo.png" alt="Panchi" height={44} />
+          <div>
+            <strong>Panchi</strong>
+            <div className="muted">Your AI-powered wings for every journey</div>
           </div>
         </div>
 
-        <div className="layout">
-          <main className="content">
-            <div className="panel">
-              <div className="panel-head">
-                <h3>Find the best options for {destination}</h3>
-                <div className="mode">Mode: <strong>{mode}</strong></div>
-              </div>
+        <h1 style={{ marginTop: 32, fontSize: 44 }}>
+          Where are we going next?
+        </h1>
+        <p className="muted">
+          Panchi will find the smartest, safest and cheapest ways to reach{" "}
+          <strong>{destination}</strong>.
+        </p>
+      </header>
 
-              <div className="controls">
-                <div className="dates">
-                  {dates.map((d,i)=>(
-                    <button key={d} className={`date ${i===activeDate?'active':''}`} onClick={()=>setActiveDate(i)}>{d}</button>
-                  ))}
-                </div>
+      <main
+        className="container"
+        style={{
+          marginTop: 32,
+          display: "grid",
+          gridTemplateColumns: "1fr 340px",
+          gap: 24,
+        }}
+      >
+        <section className="panel" style={{ padding: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <h3>Best options for {destination}</h3>
+            <span className="muted">Mode: {mode}</span>
+          </div>
 
-                <div className="modes">
-                  <button className={`m ${mode==='flights'?'active':''}`} onClick={()=>setMode('flights')}>Flights</button>
-                  <button className={`m ${mode==='trains'?'active':''}`} onClick={()=>setMode('trains')}>Trains</button>
-                  <button className={`m ${mode==='cabs'?'active':''}`} onClick={()=>setMode('cabs')}>Cabs</button>
-                </div>
-              </div>
+          <div className="tabs" style={{ marginTop: 16 }}>
+            <button
+              className={`tab ${mode === "flights" ? "active" : ""}`}
+              onClick={() => setMode("flights")}
+            >
+              Flights
+            </button>
+            <button
+              className={`tab ${mode === "trains" ? "active" : ""}`}
+              onClick={() => setMode("trains")}
+            >
+              Trains
+            </button>
+            <button
+              className={`tab ${mode === "cabs" ? "active" : ""}`}
+              onClick={() => setMode("cabs")}
+            >
+              Cabs
+            </button>
+          </div>
 
-              <div className="results">
-                {loading ? <div className="loading">Loading options…</div> : plans.map(p => (
-                  <div className="plan-card" key={p.id}>
-                    <div>
-                      <div className="carrier">{p.airline}</div>
-                      <div className="times">{p.from} → {p.to} · {p.duration}</div>
-                      <div className="mood">Mood: <strong>{p.mood}</strong></div>
-                    </div>
-                    <div className="right">
-                      <div className="price">₹{p.price}</div>
-                      <button className="book">Book</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          <div style={{ marginTop: 24 }}>
+            <div className="panel" style={{ padding: 16, marginBottom: 12 }}>
+              <strong>IndiAir</strong>
+              <div className="muted">DEL 06:00 → {destination} 08:05 · 2h 5m</div>
+              <div style={{ marginTop: 8, fontWeight: 700 }}>₹3499</div>
             </div>
-          </main>
 
-          <aside className="sidebar">
-            <div className="panel nudges">
-              <h4>Nudges & alerts</h4>
-              <ul>
-                <li><strong>Rain alert — Baga / Calangute</strong><div className="muted">Light rain Saturday evening; prefer inland stays for a quiet morning.</div></li>
-                <li><strong>Price surge likely next Fri</strong><div className="muted">Searches spiking for DEL → GOI. Book early to save ~10–18%.</div></li>
-                <li><strong>Traffic at Delhi T3 (Evening)</strong><div className="muted">Allow 30–45 mins extra to reach the airport.</div></li>
-              </ul>
+            <div className="panel" style={{ padding: 16 }}>
+              <strong>SkyWays</strong>
+              <div className="muted">DEL 09:00 → {destination} 11:05 · 2h 5m</div>
+              <div style={{ marginTop: 8, fontWeight: 700 }}>₹4299</div>
             </div>
-          </aside>
-        </div>
-      </div>
+          </div>
+        </section>
+
+        <aside className="panel" style={{ padding: 24 }}>
+          <h4>Nudges & alerts</h4>
+          <ul className="muted">
+            <li><strong>Rain alert:</strong> Light rain expected near beaches</li>
+            <li><strong>Price surge:</strong> Demand increasing for this route</li>
+            <li><strong>Traffic:</strong> Evening congestion near departure hub</li>
+          </ul>
+        </aside>
+      </main>
 
       <style jsx>{`
-        :global(body){ margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial; background:linear-gradient(180deg,#fbfdff 0%, #fff 48%, #fff7f5 100%); color:#071226; }
-        .plan-root{ max-width:1200px; margin:20px auto; padding:18px; }
-        .top{ display:flex; gap:18px; align-items:center; margin-bottom:18px; }
-        .brand img{ height:44px; width:auto; }
-        .brand-title{ font-weight:800; }
-        .brand-sub{ color:#6b7788; font-size:13px; }
-        .hero h1{ font-size:44px; margin:0; }
-        .hero p{ color:#64748b; margin-top:6px; }
-
-        .layout{ display:grid; grid-template-columns: 1fr 320px; gap:20px; }
-        .panel{ background:#fff; padding:18px; border-radius:12px; box-shadow:0 18px 50px rgba(12,18,55,0.04); }
-        .dates{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
-        .date{ padding:8px 12px; border-radius:10px; border:0; background:#f1f5f9; cursor:pointer; }
-        .date.active{ background:linear-gradient(90deg,#9f4cf3,#ff6fb2); color:#fff; box-shadow:0 12px 36px rgba(159,76,243,0.12); }
-
-        .m{ padding:8px 12px; border-radius:10px; border:0; background:#f1f5f9; cursor:pointer; }
-        .m.active{ background:linear-gradient(90deg,#9f4cf3,#ff6fb2); color:#fff; box-shadow:0 12px 36px rgba(159,76,243,0.12); }
-
-        .plan-card{ display:flex; justify-content:space-between; align-items:center; padding:16px; border-radius:12px; background:#fbfcff; margin-bottom:12px; }
-        .carrier{ font-weight:700; }
-        .times,.mood{ color:#64748b; font-size:13px; margin-top:6px; }
-        .price{ font-weight:800; }
-        .book{ padding:8px 12px; border-radius:8px; border:1px solid rgba(12,18,55,0.06); background:white; cursor:pointer; }
-
-        .muted{ color:#64748b; font-size:13px; margin-top:6px; }
-
-        @media (max-width:980px){ .layout{ grid-template-columns:1fr; } }
+        @media (max-width: 900px) {
+          main {
+            grid-template-columns: 1fr !important;
+          }
+        }
       `}</style>
     </>
   );
