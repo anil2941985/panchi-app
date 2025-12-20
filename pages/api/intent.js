@@ -1,7 +1,7 @@
 // pages/api/intent.js
-// FULL FILE REPLACEMENT – FIXED IMPORT PATH
+// FULL FILE REPLACEMENT – FINAL CORRECT PATH
 
-import { parseIntent } from "../../../lib/ai/intentParser";
+import { parseIntent } from "../../lib/ai/intentParser";
 
 export default function handler(req, res) {
   if (req.method !== "POST") {
