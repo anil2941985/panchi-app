@@ -1,7 +1,7 @@
 // pages/api/intent.js
-// FULL FILE REPLACEMENT – JAVASCRIPT API ROUTE
+// FULL FILE REPLACEMENT – FIXED IMPORT PATH
 
-import { parseIntent } from "@/lib/ai/intentParser";
+import { parseIntent } from "../../../lib/ai/intentParser";
 
 export default function handler(req, res) {
   if (req.method !== "POST") {
